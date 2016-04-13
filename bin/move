@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+#---------------------------------------------------------------------------------------------------
+# Script to move a file from one place to another. Restrictions to application of course apply :-)
+#
+# Author: C.Paus                                                                      (May 06, 2010)
+#---------------------------------------------------------------------------------------------------
+import os,sys,getopt,re
+import srm
+
+user = os.environ['TICKET_HOLDER']
+t2user = os.environ['TIER2_USER']
+
+def debugPrint(text):
+    if debug ==1:
+        print ' DEBUG: ' + text
+
+def clean(file):
+    if   re.search('dcap:',file):
+        g = file.split('/')
+        file = '/'.join(g[3:])
+    if   re.search('root:',file):
+        g = file.split('/')
+        file = '/'.join(g[3:])
+        file = '/mnt/hadoop/cms' + file
+    debugPrint(' Cleaned: ' + file)
+
+    return file
+
+
+def exists(target):
+    if   re.search('/castor/cern.ch/',target):
+        debugPrint(' Identified a castor directory: ' + target)
+        cmd = 'ssh ' + t2user + '@lxplus.cern.ch rfdir ' + target + '>& /dev/null'
+    elif re.search('/mnt/hadoop/cms/store',target):
+        debugPrint(' Identified a tier-2 directory: ' + target)
+        cmd = 'ssh ' + t2user + '@se01.cmsaf.mit.edu ls -1 ' + target + ' \>\& /dev/null'
+    else:
+        debugPrint(' Identified a normal directory: ' + target)
+        cmd = 'ls -1 ' + target + '>\& /dev/null'
+            
+    status = os.system(cmd)
+    debugPrint(' Status: %d' % status)
+
+    return (status == 0)
+
+def move(source,target):
+    if   re.search('/castor/cern.ch/',source) and re.search('/castor/cern.ch/',target):
+        debugPrint(' Identified two castor directories')
+        cmd = 'ssh ' + user + '@lxplus.cern.ch nsrename ' + source + ' ' + target
+    elif re.search('/mnt/hadoop/cms/store',target):
+        urlSource = srm.convertToUrl(source,False)
+        urlTarget = srm.convertToUrl(target,False)
+        cmd = 'srmmv ' + urlSource + ' ' + urlTarget + ' >& /dev/null'
+        cmd = 'rglexec mv ' + source + ' ' + target ## + ' >& /dev/null'
+    else:
+        debugPrint(' Identified a normal directory')
+        cmd = 'mv ' + source + ' ' + target
+
+    # ready to perfrom the requested operation
+    debugPrint('  -> moving with: ' + cmd)
+    status = os.system(cmd)
+
+    return status
+
+#===================================================================================================
+# Main starts here
+#===================================================================================================
+# Define string to explain usage of the script
+usage =  "Usage: list  <source>  <target>"
+usage += "             --debug\n"
+usage += "             --help\n"
+
+# Define the valid options which can be specified and check out the command line
+valid = ['debug','help']
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError, ex:
+    print usage
+    print str(ex)
+    sys.exit(1)
+
+# --------------------------------------------------------------------------------------------------
+# Get all parameters for the production
+# --------------------------------------------------------------------------------------------------
+# Set defaults for each option
+debug = 0
+
+# Read new values from the command line
+for opt, arg in opts:
+    #print ' OPT , ARG: ' + opt + ' ' + arg
+    if   opt == '--help':
+        print usage
+        sys.exit(0)
+    elif opt == '--debug':
+        debug   = 1
+
+newArgv = []
+for arg in sys.argv[1:]:
+    #print ' ARG: ' + arg
+    if arg[:2] == "--":
+        continue
+    else:
+        newArgv.append(arg)
+
+# Define source and target
+source = clean(newArgv[0])
+target = clean(newArgv[1])
+
+# Test whether the source exists and that the target does not exist
+if   exists(source) and not exists(target):
+    debugPrint("\n Moving: " + source + "\n     to  " + target + "\n")
+    move(source,target)
+elif not exists(source):
+    print ' ERROR: the source ('+source+') does not exist.'
+elif exists(target):
+    print ' ERROR: the target ('+target+') exists already.'
+else:
+    print ' ERROR: hmmm.... what is wrong here?'

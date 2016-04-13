@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+#---------------------------------------------------------------------------------------------------
+# Script to remove a directory.
+#
+# Author: C.Paus                                                                      (May 06, 2010)
+#---------------------------------------------------------------------------------------------------
+import os,sys,getopt,re,srm
+t2user = os.environ['TIER2_USER']
+
+def debugPrint(text):
+    if debug:
+        print ' DEBUG: ' + text
+
+def clean(file):
+    if   re.search('dcap:',file):
+        g = file.split('/')
+        file = '/'.join(g[3:])
+    debugPrint(' Cleaned: ' + file)
+
+    return file
+
+
+def exists(target):
+    if   re.search('/castor/cern.ch/',target):
+        debugPrint(' Identified a castor directory: ' + target)
+        cmd = 'rfdir ' + target
+    elif re.search('/mnt/hadoop/cms/store',target):
+        debugPrint(' Identified a tier-2 hadoop directory: ' + target)
+        target = srm.convertToUrl(target,debug)
+        cmd = 'srmls ' + target + ' >& /dev/null'
+    else:
+        debugPrint(' Identified a normal directory: ' + target)
+        cmd = 'ls -1 ' + target + '>& /dev/null'
+            
+    status = os.system(cmd)
+    debugPrint(' Status: %d (on %s)' %(status,cmd))
+
+    return (status == 0)
+
+def remove(source):
+    if   re.search('/castor/cern.ch/',source):
+        debugPrint(' Identified castor file')
+        cmd = "stager_rm -M " + source + "; nsrm " + source
+    elif re.search('/mnt/hadoop/cms/store/user/paus',source):
+        debugPrint(' Identified a tier-2 hadoop directory: ' + source)
+        source = srm.convertToUrl(source,debug)
+        cmd = 'srmrmdir ' + source + ' >& /dev/null'
+    else:
+        debugPrint(' Identified a normal directory')
+        cmd = 'rm -rf ' + source
+
+    # ready to perform the requested operation
+    debugPrint('  -> removing directory with: ' + cmd)
+    status = 0
+    if exe == 1:
+        status = os.system(cmd)
+        if status != 0:
+            print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
+
+    return status
+
+#===================================================================================================
+# Main starts here
+#===================================================================================================
+# Define string to explain usage of the script
+usage =  "\n Usage: removedir  <source>"
+usage += "                  --exe\n"
+usage += "                  --debug\n"
+usage += "                  --help\n\n"
+
+# Define the valid options which can be specified and check out the command line
+valid = ['exe','debug','help']
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError, ex:
+    print usage
+    print str(ex)
+    sys.exit(1)
+
+# --------------------------------------------------------------------------------------------------
+# Get all parameters for the production
+# --------------------------------------------------------------------------------------------------
+# Set defaults for each option
+debug = False
+exe   = 0
+
+# Read new values from the command line
+for opt, arg in opts:
+    if   opt == '--help':
+        print usage
+        sys.exit(0)
+    elif opt == '--debug':
+        debug = True
+    elif opt == '--exe':
+        exe   = 1
+
+newArgv = []
+for arg in sys.argv[1:]:
+    #print ' ARG: ' + arg
+    if arg[:2] == "--":
+        continue
+    else:
+        newArgv.append(arg)
+
+# Define source and target
+source = clean(newArgv[0])
+
+# Test whether the source exists
+if   exists(source):
+    debugPrint("\n Removing: " + source)
+    remove(source)
+elif not exists(source):
+    print ' ERROR: the source (' + source + ') does not exist.'

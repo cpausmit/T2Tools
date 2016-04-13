@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+#---------------------------------------------------------------------------------------------------
+# Script to list a directory. The format is the filesize in the first column and the full filename
+# in the second column. This is to avoid castor, tier-2 or local directory differences.
+#
+# Author: C.Paus                                                                 (February 11, 2010)
+#---------------------------------------------------------------------------------------------------
+import os,sys,getopt,re
+user = os.environ['TICKET_HOLDER']
+t2user = os.environ['TIER2_USER']
+
+def list(dir,pattern,debug):
+    if   re.search('/castor/cern.ch/',dir):
+        if debug != 0:
+            print ' identified a castor directory'
+        cmd = 'ssh ' + user + '@lxplus.cern.ch rfdir ' + dir + '| tr -s \' \'| cut -d\' \' -f5,9'
+    elif re.search('/eos/cms/',dir):
+        if debug != 0:
+            print ' identified an eos directory'
+        cmd = "lcg-ls -l srm://srm-eoscms.cern.ch:8443/srm/v2/server?SFN=" + dir + \
+              "| tr -s ' ' | cut -d ' ' -f5,7"
+    elif re.search('/mnt/hadoop/cms/store',dir):
+        if debug != 0:
+            print ' identified a tier-2 hadoop directory'
+        hdir = '/' + '/'.join(dir.split('/')[3:])
+        cmd = 'ssh ' + t2user + '@se01.cmsaf.mit.edu hdfs dfs -ls ' + hdir + \
+              ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
+        if simple:
+            # does not work for files yet....
+            cmd = 'ssh ' + t2user + '@se01.cmsaf.mit.edu find ' + dir \
+                  + ' -maxdepth 1 -printf \\"%s %f\\\\n\\"' 
+    else:
+        # First case is the simple local directory
+        if debug != 0:
+            print ' identified a normal directory'
+        cmd = 'ls -1s --block-size=1 ' + dir + '| sed \'s/^ *//\' | grep -v ^total  '
+        if simple:
+            cmd = 'ls -l ' + dir + '| sed \'s/^ *//\' | grep -v ^total | cut -d \' \' -f 5,9 '
+
+    if pattern != "":
+        cmd = cmd + ' | grep ' + pattern
+
+    if debug != 0:
+        print '  -> listing with: ' + cmd
+    status = os.system(cmd)
+    
+    return status
+
+#===================================================================================================
+# Main starts here
+#===================================================================================================
+# Define string to explain usage of the script
+usage =  "Usage: list --pattern=<name>\n"
+usage += "            --sinple\n"
+usage += "            --debug\n"
+usage += "            --help\n"
+
+# Define the valid options which can be specified and check out the command line
+valid = ['pattern=','simple','debug','help']
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError, ex:
+    print usage
+    print str(ex)
+    sys.exit(1)
+
+# --------------------------------------------------------------------------------------------------
+# Get all parameters for the production
+# --------------------------------------------------------------------------------------------------
+# Set defaults for each option
+pattern = ''
+debug   = 0
+simple  = False
+# Read new values from the command line
+for opt, arg in opts:
+    if opt == '--help':
+        print usage
+        sys.exit(0)
+    if opt == '--pattern':
+        pattern = arg
+    if opt == '--simple':
+        simple  = True
+    if opt == '--debug':
+        debug   = 1
+
+# Test whether the directory exists and then proceed
+status = 0
+for dir in sys.argv[1:]:
+    if dir[:2] == "--":
+        #print " invalid directory (%s) ignore."%(dir)
+        continue
+    if debug != 0:
+        print "\nProcessing: " + dir + "\n"
+    status += list(dir,pattern,debug)
+
+# make sure to give the right exit code
+if status != 0:
+    status = 1
+
+sys.exit(status)
