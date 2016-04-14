@@ -51,9 +51,12 @@ def clean(file):
 
 def exists(path):
 
-    if re.search('/mnt/hadoop/cms/store',path):
+    if   path.startswith('/mnt/hadoop/cms/store'):
         debugPrint(' Identified a tier-2 directory: ' + path)
         cmd = 'rglexec ls -1 ' + path
+    elif path.startswith('/cms/store'):
+        debugPrint(' Identified a tier-2 directory: ' + path)
+        cmd = 'rglexec hdfs dfs -ls ' + path
     else:
         debugPrint(' Identified a normal directory: ' + path)
         cmd = 'ls -1 ' + path + '>\& /dev/null'
@@ -66,11 +69,10 @@ def exists(path):
 
 def move(source,target):
 
-    if re.search('/mnt/hadoop/cms/store',target):
-        urlSource = srm.convertToUrl(source,False)
-        urlTarget = srm.convertToUrl(target,False)
-        ## cmd = 'srmmv ' + urlSource + ' ' + urlTarget + ' >& /dev/null'
+    if   target.startswith('/mnt/hadoop/cms/store'):
         cmd = 'rglexec mv ' + source + ' ' + target ## + ' >& /dev/null'
+    elif target.startswith('/cms/store'):
+        cmd = 'rglexec hdfs dfs -mv ' + source + ' ' + target ## + ' >& /dev/null'
     else:
         debugPrint(' Identified a normal directory')
         cmd = 'mv ' + source + ' ' + target
@@ -130,7 +132,8 @@ lTarget = exists(target)
 # Test whether the source exists and that the target does not exist
 if   lSource and not lTarget:
     debugPrint("\n Moving: " + source + "\n     to  " + target + "\n")
-    move(source,target)
+    status = move(source,target)
+    print ' INFO: %s -> %s  rc: %d'%(source,target,status)
 elif not lSource:
     print ' ERROR: the source (' + source + ') does not exist.'
 elif lTarget:
