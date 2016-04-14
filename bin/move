@@ -4,53 +4,72 @@
 #
 # Author: C.Paus                                                                      (May 06, 2010)
 #---------------------------------------------------------------------------------------------------
-import os,sys,getopt,re
+import os,sys,getopt,re,subprocess
 import srm
 
-user = os.environ['TICKET_HOLDER']
+server = os.environ['T2TOOLS_SERVER']
 t2user = os.environ['TIER2_USER']
 
+def exeCmd(cmd):
+
+    f = cmd.split(" ")
+    proc = subprocess.Popen(f,stderr=subprocess.STDOUT,stdout=subprocess.PIPE)
+
+    # trap potential return codes from rglexec
+    rc = -1
+    for line in proc.stdout:
+        if 'RC: ' in line:
+            rc = (line[:-1].split(" ")).pop()
+            rc = int(rc)
+
+    # just wait until it is done
+    proc.wait()
+    status = proc.returncode
+
+    # trap the internal return code
+    if f[0].startswith('rglexec'):
+        status = rc
+
+    return status
+        
+
 def debugPrint(text):
-    if debug ==1:
+
+    if debug==1:
         print ' DEBUG: ' + text
 
 def clean(file):
-    if   re.search('dcap:',file):
-        g = file.split('/')
-        file = '/'.join(g[3:])
+
     if   re.search('root:',file):
         g = file.split('/')
         file = '/'.join(g[3:])
         file = '/mnt/hadoop/cms' + file
+
     debugPrint(' Cleaned: ' + file)
 
     return file
 
+def exists(path):
 
-def exists(target):
-    if   re.search('/castor/cern.ch/',target):
-        debugPrint(' Identified a castor directory: ' + target)
-        cmd = 'ssh ' + t2user + '@lxplus.cern.ch rfdir ' + target + '>& /dev/null'
-    elif re.search('/mnt/hadoop/cms/store',target):
-        debugPrint(' Identified a tier-2 directory: ' + target)
-        cmd = 'ssh ' + t2user + '@se01.cmsaf.mit.edu ls -1 ' + target + ' \>\& /dev/null'
+    if re.search('/mnt/hadoop/cms/store',path):
+        debugPrint(' Identified a tier-2 directory: ' + path)
+        cmd = 'rglexec ls -1 ' + path
     else:
-        debugPrint(' Identified a normal directory: ' + target)
-        cmd = 'ls -1 ' + target + '>\& /dev/null'
+        debugPrint(' Identified a normal directory: ' + path)
+        cmd = 'ls -1 ' + path + '>\& /dev/null'
             
-    status = os.system(cmd)
-    debugPrint(' Status: %d' % status)
+    debugPrint(' Cmd:    %s' % cmd)
+    status = exeCmd(cmd)
+    debugPrint(' Status: %d' % int(status))
 
     return (status == 0)
 
 def move(source,target):
-    if   re.search('/castor/cern.ch/',source) and re.search('/castor/cern.ch/',target):
-        debugPrint(' Identified two castor directories')
-        cmd = 'ssh ' + user + '@lxplus.cern.ch nsrename ' + source + ' ' + target
-    elif re.search('/mnt/hadoop/cms/store',target):
+
+    if re.search('/mnt/hadoop/cms/store',target):
         urlSource = srm.convertToUrl(source,False)
         urlTarget = srm.convertToUrl(target,False)
-        cmd = 'srmmv ' + urlSource + ' ' + urlTarget + ' >& /dev/null'
+        ## cmd = 'srmmv ' + urlSource + ' ' + urlTarget + ' >& /dev/null'
         cmd = 'rglexec mv ' + source + ' ' + target ## + ' >& /dev/null'
     else:
         debugPrint(' Identified a normal directory')
@@ -58,7 +77,8 @@ def move(source,target):
 
     # ready to perfrom the requested operation
     debugPrint('  -> moving with: ' + cmd)
-    status = os.system(cmd)
+    status = 0
+    status = exeCmd(cmd)
 
     return status
 
@@ -71,7 +91,7 @@ usage += "             --debug\n"
 usage += "             --help\n"
 
 # Define the valid options which can be specified and check out the command line
-valid = ['debug','help']
+valid = ['debug=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -87,16 +107,14 @@ debug = 0
 
 # Read new values from the command line
 for opt, arg in opts:
-    #print ' OPT , ARG: ' + opt + ' ' + arg
     if   opt == '--help':
         print usage
         sys.exit(0)
     elif opt == '--debug':
-        debug   = 1
+        debug = int(arg)
 
 newArgv = []
 for arg in sys.argv[1:]:
-    #print ' ARG: ' + arg
     if arg[:2] == "--":
         continue
     else:
@@ -106,13 +124,16 @@ for arg in sys.argv[1:]:
 source = clean(newArgv[0])
 target = clean(newArgv[1])
 
+lSource = exists(source)
+lTarget = exists(target)
+
 # Test whether the source exists and that the target does not exist
-if   exists(source) and not exists(target):
+if   lSource and not lTarget:
     debugPrint("\n Moving: " + source + "\n     to  " + target + "\n")
     move(source,target)
-elif not exists(source):
-    print ' ERROR: the source ('+source+') does not exist.'
-elif exists(target):
-    print ' ERROR: the target ('+target+') exists already.'
+elif not lSource:
+    print ' ERROR: the source (' + source + ') does not exist.'
+elif lTarget:
+    print ' ERROR: the target (' + target + ') exists already.'
 else:
     print ' ERROR: hmmm.... what is wrong here?'

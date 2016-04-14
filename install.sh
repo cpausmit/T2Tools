@@ -15,7 +15,8 @@ touch setup.sh
 echo "# CAREFUL THIS FILE IS GENERATED AT INSTALL"                 >> setup.sh
 echo "export TICKET_HOLDER=$TICKET_HOLDER"                         >> setup.sh
 echo "export TIER2_USER=$TIER2_USER"                               >> setup.sh
-echo "export T2TOOLS_BASE="`pwd`                                   >> setup.sh
+echo "export T2TOOLS_BASE=`pwd`"                                   >> setup.sh
+echo "export T2TOOLS_SERVER=se01.cmsaf.mit.edu"                    >> setup.sh
 echo "export PATH=\"\${PATH}:\${T2TOOLS_BASE}/bin\""               >> setup.sh
 echo "export PYTHONPATH=\"\${PYTONPATH}:\${T2TOOLS_BASE}/python\"" >> setup.sh
 echo ""                                                            >> setup.sh

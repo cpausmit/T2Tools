@@ -25,7 +25,8 @@ scp -q $SCRIPT          $TIER2_USER@${GATEWAY}:/tmp/          2> /dev/null
 
 # Execute the script
 ssh $TIER2_USER@${GATEWAY} \
-  "export GLEXEC_CLIENT_CERT=$REMOTE_TICKET; /usr/sbin/glexec /tmp/$SCRIPT"
+  "export GLEXEC_CLIENT_CERT=$REMOTE_TICKET; /usr/sbin/glexec /tmp/$SCRIPT; echo \"RC: \$?\""
+# the RC is added so one could trap the return code for the internal command.
 
 # Cleanup remotely
 ssh $TIER2_USER@${GATEWAY} "rm /tmp/$SCRIPT $REMOTE_TICKET"
