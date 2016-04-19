@@ -13,7 +13,7 @@ DIR = "/store/user/paus"
 def missingFilesInSample(sample):
 
     if os.path.exists('/tmp/missing_'+sample+'.list'):
-        print ' Missing file list already exists. Moving on.'
+        print ' Missing file list already exists. /tmp/missing_'+sample+'.list'
         return
 
     os.system("date")
@@ -26,24 +26,21 @@ def missingFilesInSample(sample):
         file = line[:-1]
         file = (file.split(" ")).pop()
         allFiles.append(file)
-        #print ' Next: ' + DIR + "/" + book + '/' + sample + "/" + file
     
     doneFiles = []
     print ' Find done files (Dropbox).'
-    cmd = "pycox.py --action=ls --source=" + TRUNC + DIR + '/'+ book + '/' + sample + "| grep root"
+    cmd = "python "+ os.getenv("PYCOX_BASE", None)+ "/pycox.py --action=ls --source=" + TRUNC + DIR + '/'+ book + '/' + sample + "| grep root"
     for line in os.popen(cmd).readlines():
         file = line[:-1]
         file = (file.split(" ")).pop()
         file = (file.split("/")).pop()
         doneFiles.append(file)
-        #print ' Next: ' + file
     
     missingFiles = []
     print ' Find missing files (missing in Dropbox).'
     for file in allFiles:
         if file not in doneFiles:
             missingFiles.append(file)
-            #print ' Missing: ' + file        
             print TRUNC + DIR + "/" + book + '/' + sample + '/' + file        
     
     print ' Numbers all/done/missing:  %4d / %4d / %4d'%\

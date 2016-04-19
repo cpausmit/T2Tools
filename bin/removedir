@@ -7,55 +7,79 @@
 import os,sys,getopt,re,srm
 t2user = os.environ['TIER2_USER']
 
-def debugPrint(text):
+def exeCmd(cmd):
+
+    f = cmd.split(" ")
+    proc = subprocess.Popen(f,stderr=subprocess.STDOUT,stdout=subprocess.PIPE)
+
+    # trap potential return codes from rglexec
+    rc = -1
+    for line in proc.stdout:
+        if 'RC: ' in line:
+            rc = (line[:-1].split(" ")).pop()
+            rc = int(rc)
+
+    # just wait until it is done
+    proc.wait()
+    status = proc.returncode
+
+    # trap the internal return code
+    if f[0].startswith('rglexec'):
+        status = rc
+
+    return status
+        
+
+def debugPrint(text,debug=0):
     if debug:
         print ' DEBUG: ' + text
 
 def clean(file):
-    if   re.search('dcap:',file):
+
+    if  file.startswith('root:'):
         g = file.split('/')
         file = '/'.join(g[3:])
+        file = '/cms' + file
+    elif file.startswith('/mnt/hadoop/cms/store'):
+        file = '/' + '/'.join(dir.split('/')[3:])
+
     debugPrint(' Cleaned: ' + file)
 
     return file
 
+def exists(path):
 
-def exists(target):
-    if   re.search('/castor/cern.ch/',target):
-        debugPrint(' Identified a castor directory: ' + target)
-        cmd = 'rfdir ' + target
-    elif re.search('/mnt/hadoop/cms/store',target):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + target)
-        target = srm.convertToUrl(target,debug)
-        cmd = 'srmls ' + target + ' >& /dev/null'
+    if   path.startswith('/mnt/hadoop/cms/store'):
+        debugPrint(' Identified a tier-2 directory: ' + path)
+        cmd = 'rglexec ls -1 ' + path
+    elif path.startswith('/cms/store'):
+        debugPrint(' Identified a tier-2 directory: ' + path)
+        cmd = 'rglexec hdfs dfs -ls ' + path
     else:
-        debugPrint(' Identified a normal directory: ' + target)
-        cmd = 'ls -1 ' + target + '>& /dev/null'
+        debugPrint(' Identified a normal directory: ' + path)
+        cmd = 'ls -1 ' + path + '>\& /dev/null'
             
-    status = os.system(cmd)
-    debugPrint(' Status: %d (on %s)' %(status,cmd))
+    debugPrint(' Cmd:    %s' % cmd)
+    status = exeCmd(cmd)
+    debugPrint(' Status: %d' % int(status))
 
     return (status == 0)
 
-def remove(source):
-    if   re.search('/castor/cern.ch/',source):
-        debugPrint(' Identified castor file')
-        cmd = "stager_rm -M " + source + "; nsrm " + source
-    elif re.search('/mnt/hadoop/cms/store/user/paus',source):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + source)
-        source = srm.convertToUrl(source,debug)
-        cmd = 'srmrmdir ' + source + ' >& /dev/null'
+def remove(path):
+
+    if path.startswith('/cms/store'):
+        debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
+        cmd = 'rglexec hdfs dfs -rm -r ' + path
     else:
-        debugPrint(' Identified a normal directory')
-        cmd = 'rm -rf ' + source
+        debugPrint(' Identified a normal directory',debug)
+        cmd = 'rm -rf ' + path
 
     # ready to perform the requested operation
-    debugPrint('  -> removing directory with: ' + cmd)
+    debugPrint('  -> removing with: ' + cmd,debug)
     status = 0
-    if exe == 1:
-        status = os.system(cmd)
-        if status != 0:
-            print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
+    status = os.system(cmd)
+    if status != 0:
+        print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
 
     return status
 
@@ -105,9 +129,11 @@ for arg in sys.argv[1:]:
 # Define source and target
 source = clean(newArgv[0])
 
+remove(source)
+
 # Test whether the source exists
-if   exists(source):
-    debugPrint("\n Removing: " + source)
-    remove(source)
-elif not exists(source):
-    print ' ERROR: the source (' + source + ') does not exist.'
+#if   exists(source):
+#    debugPrint("\n Removing: " + source)
+#    remove(source)
+#elif not exists(source):
+#    print ' ERROR: the source (' + source + ') does not exist.'

@@ -10,15 +10,28 @@ import os,sys,getopt,re
 server = os.environ['T2TOOLS_SERVER']
 t2user = os.environ['TIER2_USER']
 
+def clean(file):
+    # make the file name standard
+
+    if  file.startswith('root:'):
+        g = file.split('/')
+        file = '/'.join(g[3:])
+        file = '/cms' + file
+    elif file.startswith('/mnt/hadoop/cms/store'):
+        file = '/' + '/'.join(dir.split('/')[3:])
+
+    #debugPrint(' clean: ' + file)
+
+    return file
+
 def list(dir,pattern,long,debug):
     # list a directory
 
-    if re.search('/mnt/hadoop/cms/store',dir):
+    if dir.startswith('/cms/store'):
         if debug != 0:
             print ' identified a tier-2 hadoop directory (long=%d)'%(long)
 
-        hdir = '/' + '/'.join(dir.split('/')[3:])
-        cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -ls ' + hdir
+        cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -ls ' + dir
 
         if   long == 0:
             cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
@@ -80,6 +93,8 @@ for opt, arg in opts:
 # Test whether the directory exists and then proceed
 status = 0
 for dir in sys.argv[1:]:
+
+    dir = clean(dir)
 
     if dir[:2] == "--":
         continue
