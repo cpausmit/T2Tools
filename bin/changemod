@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 #---------------------------------------------------------------------------------------------------
-# Script to list a directory. The format is the filesize in the first column and the full filename
-# in the second column.
+# Script to change permission on a directory. The format is the same as the chmod command.
 #
-# Author: C.Paus                                                                 (February 11, 2010)
+# Author: C.Paus                                                                    (April 21, 2016)
 #---------------------------------------------------------------------------------------------------
 import os,sys,getopt,re
 
@@ -20,35 +19,17 @@ def clean(file):
     elif file.startswith('/mnt/hadoop/cms/store'):
         file = '/' + '/'.join(dir.split('/')[3:])
 
-    #debugPrint(' clean: ' + file)
+    if debug != 0:
+        print ' clean: ' + file
 
     return file
 
-def list(dir,pattern,long,debug):
+def changemod(options,dir,debug):
     # list a directory
 
-    if dir.startswith('/cms/store'):
-        if debug != 0:
-            print ' identified a tier-2 hadoop directory (long=%d)'%(long)
-
-        cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -ls ' + dir
-
-        if   long == 0:
-            cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
-        elif long == 1:
-            cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | grep ^[0-9] '
-
-    else:
-        if debug != 0:
-            print ' identified a normal directory'
-        cmd = 'ls -1s --block-size=1 ' + dir + '| sed \'s/^ *//\' | grep -v ^total  '
-
-    if pattern != "":
-        cmd += ' | grep ' + pattern
-
+    cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -chmod ' + options + ' ' + dir
     if debug != 0:
-        print '  -> listing with: ' + cmd
-
+        print '  -> chmod with: ' + cmd
     status = os.system(cmd)
     
     return status
@@ -57,13 +38,12 @@ def list(dir,pattern,long,debug):
 # Main starts here
 #===================================================================================================
 # Define string to explain usage of the script
-usage =  "Usage: list --pattern=<name>\n"
-usage += "            --debug\n"
-usage += "            --long\n"
-usage += "            --help\n"
+usage =  "Usage: changemod --options="" (ex. \"-R a+r\")\n"
+usage += "                 --debug\n"
+usage += "                 --help\n"
 
 # Define the valid options which can be specified and check out the command line
-valid = ['pattern=','long=','debug=','help']
+valid = ['options=','debug=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -75,7 +55,7 @@ except getopt.GetoptError, ex:
 # Get all parameters for the production
 # --------------------------------------------------------------------------------------------------
 # Set defaults for each option
-pattern = ''
+options = ''
 debug = 0
 long = 0
 # Read new values from the command line
@@ -83,10 +63,8 @@ for opt, arg in opts:
     if opt == '--help':
         print usage
         sys.exit(0)
-    if opt == '--pattern':
-        pattern = arg
-    if opt == '--long':
-        long = int(arg)
+    if opt == '--options':
+        options = arg
     if opt == '--debug':
         debug = arg
 
@@ -102,7 +80,7 @@ for dir in sys.argv[1:]:
     if debug != 0:
         print "\nProcessing: " + dir + "\n"
 
-    status += list(dir,pattern,long,debug)
+    status += changemod(options,dir,debug)
 
 # make sure to give the right exit code
 if status != 0:
