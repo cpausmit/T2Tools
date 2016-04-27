@@ -128,20 +128,6 @@ target = clean(newArgv[1])
 
 debugPrint("\n Moving: " + source + "\n     to  " + target + "\n")
 status = move(source,target)
-print ' INFO: %s -> %s  rc: %d'%(source,target,status)
 
-
-#lSource = exists(source)
-#lTarget = exists(target)
-
-# Test whether the source exists and that the target does not exist
-#if   lSource and not lTarget:
-#    debugPrint("\n Moving: " + source + "\n     to  " + target + "\n")
-#    status = move(source,target)
-#    print ' INFO: %s -> %s  rc: %d'%(source,target,status)
-#elif not lSource:
-#    print ' ERROR: the source (' + source + ') does not exist.'
-#elif lTarget:
-#    print ' ERROR: the target (' + target + ') exists already.'
-#else:
-#    print ' ERROR: hmmm.... what is wrong here?'
+debugPrint(' INFO: %s -> %s'%(source,target))
+print "rc: %d"%status

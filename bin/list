@@ -38,11 +38,6 @@ def list(dir,pattern,long,debug):
         elif long == 1:
             cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | grep ^[0-9] '
 
-    else:
-        if debug != 0:
-            print ' identified a normal directory'
-        cmd = 'ls -1s --block-size=1 ' + dir + '| sed \'s/^ *//\' | grep -v ^total  '
-
     if pattern != "":
         cmd += ' | grep ' + pattern
 

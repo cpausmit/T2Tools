@@ -25,20 +25,6 @@ def clean(file,debug):
 
     return file
 
-def exists(target,debug):
-    if re.search('/mnt/hadoop/cms/store',target):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + target,debug)
-        target = srm.convertToHdfs(target,debug)
-        cmd = 'hdfs dfs -ls ' + target + ' >& /dev/null'
-    else:
-        debugPrint(' Identified a normal directory: ' + target,debug)
-        cmd = 'ls -1 ' + target + '>& /dev/null'
-            
-    status = os.system(cmd)
-    debugPrint(' Status: %d (on %s)' %(status,cmd),debug)
-
-    return (status == 0)
-
 def remove(source,debug):
     if   re.search('/castor/cern.ch/',source):
         debugPrint(' Identified castor file',debug)
@@ -53,10 +39,9 @@ def remove(source,debug):
     # ready to perform the requested operation
     debugPrint('  -> removing with: ' + cmd,debug)
     status = 0
-    if exe == 1:
-        status = os.system(cmd)
-        if status != 0:
-            print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
+    status = os.system(cmd)
+    if status != 0:
+        print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
 
     return status
 
@@ -96,13 +81,12 @@ def removeCatalog(source,debug):
 #===================================================================================================
 # Define string to explain usage of the script
 usage =  "Usage: remove  <source>"
-usage += "               --exe\n"
 usage += "               --catalog\n"
 usage += "               --debug\n"
 usage += "               --help\n"
 
 # Define the valid options which can be specified and check out the command line
-valid = ['exe','catalog','debug','help']
+valid = ['catalog','debug','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -116,7 +100,6 @@ except getopt.GetoptError, ex:
 # Set defaults for each option
 catalog = False
 debug   = False
-exe     = 0
 
 # Read new values from the command line
 for opt, arg in opts:
@@ -127,8 +110,6 @@ for opt, arg in opts:
         debug   = True
     elif opt == '--catalog':
         catalog = True
-    elif opt == '--exe':
-        exe     = 1
 
 newArgv = []
 for arg in sys.argv[1:]:
@@ -140,12 +121,8 @@ for arg in sys.argv[1:]:
 # Define source and target
 source = clean(newArgv[0],debug)
 
-# Test whether the source exists
-if   exists(source,debug):
-    debugPrint("\n Removing: " + source,debug)
-    remove(source,debug)
-elif not exists(source):
-    print ' ERROR: the source ('+source+') does not exist.'
+# remove it
+remove(source,debug)
 
 # Remove also the catalog entry
 if catalog:
