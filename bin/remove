@@ -5,7 +5,7 @@
 # Author: C.Paus                                                                      (May 06, 2010)
 #---------------------------------------------------------------------------------------------------
 import os,sys,getopt,re,srm
-t2user = os.environ['TIER2_USER']
+t2user = os.environ['T2TOOLS_USER']
 
 def debugPrint(text,debug):
     if debug:

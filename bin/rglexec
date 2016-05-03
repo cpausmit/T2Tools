@@ -5,7 +5,7 @@
 #                                                                         v0.0 C.Paus (Aug 00, 2012)
 #===================================================================================================
 export X509_USER_PROXY=`voms-proxy-info -path`
-GATEWAY=$T2TOOLS_SERVER                                            # GATEWAY=t2bat0210.cmsaf.mit.edu
+# T2TOOLS_SERVER=t2bat0210.cmsaf.mit.edu
 REMOTE_TICKET=${X509_USER_PROXY}.$$
 SCRIPT=$1
 
@@ -18,16 +18,16 @@ SCRIPT=sc.$$
 chmod 755 $SCRIPT
 
 # Copy ticket and script
-scp -q $X509_USER_PROXY $TIER2_USER@${GATEWAY}:$REMOTE_TICKET 2> /dev/null
-scp -q $SCRIPT          $TIER2_USER@${GATEWAY}:/tmp/          2> /dev/null
+scp -q $X509_USER_PROXY $T2TOOLS_USER@${T2TOOLS_SERVER}:$REMOTE_TICKET 2> /dev/null
+scp -q $SCRIPT          $T2TOOLS_USER@${T2TOOLS_SERVER}:/tmp/          2> /dev/null
 
 # Execute the script
 
 cmd="export GLEXEC_CLIENT_CERT=$REMOTE_TICKET; export X509_USER_PROXY=$REMOTE_TICKET; "
 cmd="$cmd /usr/sbin/glexec /tmp/$SCRIPT; echo \"RC: \$?\"; rm -f /tmp/$SCRIPT $REMOTE_TICKET"
 
-ssh -x $TIER2_USER@${GATEWAY} $cmd
-# the RC is added so one could trap the return code for the internal command.
+ssh -x $T2TOOLS_USER@${T2TOOLS_SERVER} $cmd
+# careful the RC is added so one could trap the return code for the internal command.
 
 # Cleanup locally
 if [ -e sc.$$ ]

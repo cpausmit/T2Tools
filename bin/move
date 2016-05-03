@@ -8,7 +8,7 @@ import os,sys,getopt,re,subprocess
 import srm
 
 server = os.environ['T2TOOLS_SERVER']
-t2user = os.environ['TIER2_USER']
+t2user = os.environ['T2TOOLS_USER']
 
 def exeCmd(cmd):
 

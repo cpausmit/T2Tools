@@ -7,7 +7,7 @@
 import os,sys,getopt,re
 
 server = os.environ['T2TOOLS_SERVER']
-t2user = os.environ['TIER2_USER']
+t2user = os.environ['T2TOOLS_USER']
 
 def clean(file):
     # make the file name standard
