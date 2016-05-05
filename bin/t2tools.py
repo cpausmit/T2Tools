@@ -17,8 +17,13 @@ def testLocalSetup(action,src,tgt,debug=0):
 
     # See whether we are setup
     base = os.environ.get('T2TOOLS_BASE')
-    if base=='':
+    if base == '':
         print '\n ERROR -- t2tools is not setup T2TOOLS_BASE environment not set.\n'
+        sys.exit(1)
+
+    server = os.environ.get('T2TOOLS_SERVER')
+    if server == '':
+        print '\n ERROR -- t2tools is not setup T2TOOLS_SERVER environment not set.\n'
         sys.exit(1)
 
     # every action needs a source
@@ -33,8 +38,17 @@ def testLocalSetup(action,src,tgt,debug=0):
             print '\n ERROR - no target specified. EXIT!\n'
             print usage
             sys.exit(1)
+
     return
 
+def sshBase():
+    server = os.environ.get('T2TOOLS_SERVER')
+    return 'ssh -x ' + server
+    
+def sshCmd(action):
+    cmd = 'hdfs dfs ' + config.get('commands','ls')
+    return cmd
+    
 def t2IsDir(config,src,debug=0):
     # Test whether path is directory (0 - not directory, 1 - is directory, -1 - inquery failed)
 
@@ -44,7 +58,32 @@ def t2Ls(config,src,debug=0):
     # List the given source
 
     print "# o List o  " + src
-     
+
+    list = sshBase().split(' ')
+    list.append(sshCmd('ls'))
+    list.append(src)
+    if debug>1:
+        print ' COMMAND LIST: '
+        print list
+    
+    p = subprocess.Popen(list,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    (out, err) = p.communicate()
+    rc = p.returncode
+
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+
+    # deal with error
+    if rc != 0:
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR: %d\n'%(len(lines)) + err
+
+    # analyze the output
+    lines = out.split('\n')
+    for line in lines:
+        print ' LINE: ' + line
+
     #print '%s:%d %s'%(entryType,entrySize,entryPath)
 
     return
