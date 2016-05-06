@@ -17,7 +17,7 @@ def clean(file):
         g = file.split('/')
         file = '/'.join(g[3:])
         file = '/cms' + file
-    elif file.startswith('/mnt/hadoop/cms/store'):
+    elif file.startswith('/mnt/hadoop/cms'):
         file = '/' + '/'.join(dir.split('/')[3:])
 
     #debugPrint(' clean: ' + file)

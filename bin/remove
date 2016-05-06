@@ -26,15 +26,7 @@ def clean(file,debug):
     return file
 
 def remove(source,debug):
-    if   re.search('/castor/cern.ch/',source):
-        debugPrint(' Identified castor file',debug)
-        cmd = "stager_rm -M " + source + "; nsrm " + source
-    elif re.search('/mnt/hadoop/cms/store/user/paus',source):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + source,debug)
-        cmd = 'rglexec rm ' + source
-    else:
-        debugPrint(' Identified a normal directory',debug)
-        cmd = 'rm -rf ' + source
+    cmd = 'rglexec hdfs dfs -rm ' + source
 
     # ready to perform the requested operation
     debugPrint('  -> removing with: ' + cmd,debug)
