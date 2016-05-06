@@ -17,7 +17,7 @@ def clean(file):
         g = file.split('/')
         file = '/'.join(g[3:])
         file = '/cms' + file
-    elif file.startswith('/mnt/hadoop/cms/store'):
+    elif file.startswith('/mnt/hadoop/cms'):
         file = '/' + '/'.join(dir.split('/')[3:])
 
     #debugPrint(' clean: ' + file)
@@ -27,7 +27,7 @@ def clean(file):
 def list(dir,pattern,long,debug):
     # list a directory
 
-    if dir.startswith('/cms/store'):
+    if dir.startswith('/cms'):
         if debug != 0:
             print ' identified a tier-2 hadoop directory (long=%d)'%(long)
 
@@ -37,6 +37,8 @@ def list(dir,pattern,long,debug):
             cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
         elif long == 1:
             cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | grep ^[0-9] '
+    else:
+        print ' ERROR -- no Tier-2 directory: ' + dir
 
     if pattern != "":
         cmd += ' | grep ' + pattern
