@@ -18,9 +18,13 @@ def execute(cmd,debug):
         os.system(cmd)
 
 def clean(file,debug):
-    if   re.search('dcap:',file):
+    if   file.startswith('root:'):
         g = file.split('/')
         file = '/'.join(g[3:])
+        file = '/cms' + file
+    elif file.startswith('/mnt/hadoop/cms'):
+        file = '/' + '/'.join(file.split('/')[3:])
+
     debugPrint(' Cleaned: ' + file,debug)
 
     return file
@@ -41,18 +45,13 @@ def removeCatalog(source,debug):
     tmp = os.getpid()
     pid = "%d"%tmp
     # which catalog is this one in?
-    catalogDir = '/home/cmsprod/catalog/local'
-    if   re.search('/castor/cern.ch/',source):
-        catalogDir = '/home/cmsprod/catalog/cern'
-    elif re.search('/mnt/hadoop/cms/store/user/paus',source):
-        catalogDir = '/home/cmsprod/catalog/t2mit'
+    catalogDir = '/home/cmsprod/catalog/t2mit'
     # now get the dataset and the book
-    f       = source.split('/')
-    file    = f[-1]
+    f = source.split('/')
+    file = f[-1]
     dataset = f[-2]
-    book    = f[-4] + '/' + f[-3]
-
-    dir     = catalogDir + '/' + book + '/' + dataset
+    book = f[-4] + '/' + f[-3]
+    dir = catalogDir + '/' + book + '/' + dataset
 
     # now remove the particular file from the record
     cmd = 'cat ' + dir + '/RawFiles.?? | sort -u | grep -v ' + file + ' > /tmp/RawFiles.00.' + pid
@@ -110,12 +109,14 @@ for arg in sys.argv[1:]:
     else:
         newArgv.append(arg)
 
-# Define source and target
-source = clean(newArgv[0],debug)
+# go through the files
+for nextFile in newArgv:
+    source = clean(nextFile,debug)
 
-# remove it
-remove(source,debug)
-
-# Remove also the catalog entry
-if catalog:
-    removeCatalog(source,debug)
+    if debug>0:
+        print ' Next File: ' + source
+    # remove it
+    remove(source,debug)
+    # Remove also the catalog entry
+    if catalog:
+        removeCatalog(source,debug)

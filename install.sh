@@ -4,8 +4,16 @@
 #---------------------------------------------------------------------------------------------------
 echo -n ' Name of the proxy account used: '
 read TICKET_HOLDER
+if [ -z "$TICKET_HOLDER" ]
+then
+  TICKET_HOLDER=$USER
+fi
 echo -n ' Name of the Tier-2 account used: '
 read TIER2_USER
+if [ -z "$TIER2_USER" ]
+then
+  TIER2_USER=$USER
+fi
 
 # generate the setup file
 rm -f setup.sh
