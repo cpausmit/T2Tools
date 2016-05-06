@@ -27,19 +27,18 @@ def clean(file):
 def list(dir,pattern,long,debug):
     # list a directory
 
-    if dir.startswith('/cms'):
-        if debug != 0:
-            print ' identified a tier-2 hadoop directory (long=%d)'%(long)
+    if not dir.startswith('/cms'):
+        print ' ERROR -- directory not on Tier-2: ' + dir
 
-        cmd = 'ssh -x ' + t2user + '@' + server + ' hdfs dfs -ls ' + dir
+    if debug != 0:
+        print ' identified a tier-2 hadoop directory (long=%d)'%(long)
 
-        if   long == 0:
-            cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
-        elif long == 1:
-            cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | grep ^[0-9] '
-    else:
-        print ' ERROR -- no Tier-2 directory: ' + dir
-
+    cmd = 'ssh -x ' + t2user + '@' + server + ' hdfs dfs -ls ' + dir
+    if   long == 0:
+        cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | sed \'s#/.*/##\' | grep ^[0-9] '
+    elif long == 1:
+        cmd += ' | tr -s \' \' | cut -d\' \' -f5,8 | grep ^[0-9] '
+            
     if pattern != "":
         cmd += ' | grep ' + pattern
 

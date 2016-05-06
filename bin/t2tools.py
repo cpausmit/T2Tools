@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #---------------------------------------------------------------------------------------------------
 #
-# Script defines core operations on our Tier-2 file system: list, remove, upload, download  etc.
+# Script defines core operations on our Tier-2 file system: ls, rm, up(load), down(load)  etc.
 #
 #                                                                         v0 - Mar 31, 2016 - C.Paus
 #---------------------------------------------------------------------------------------------------
@@ -13,12 +13,17 @@ from io import BytesIO
 #  H E L P E R S
 #===================================================================================================
 def testLocalSetup(action,src,tgt,debug=0):
-    # The local setup needs a number of things to be present. Make sure all is there, or complain.
+    # local setup needs a number of things to be present: make sure all is there, or complain
 
-    # See whether we are setup
-    base = os.environ.get('T2TOOLS_BASE')
-    if base=='':
+    # check environment variables
+    base = os.environ.get('T2TOOLS_BASE','')
+    if base == '':
         print '\n ERROR -- t2tools is not setup T2TOOLS_BASE environment not set.\n'
+        sys.exit(1)
+
+    server = os.environ.get('T2TOOLS_SERVER','')
+    if server == '':
+        print '\n ERROR -- t2tools is not setup T2TOOLS_SERVER environment not set.\n'
         sys.exit(1)
 
     # every action needs a source
@@ -33,20 +38,91 @@ def testLocalSetup(action,src,tgt,debug=0):
             print '\n ERROR - no target specified. EXIT!\n'
             print usage
             sys.exit(1)
+
+    if debug>1:
+        print '\n INFO -- local setup looks ok.\n'
+            
     return
 
+def sshBase():
+    # provide basic ssh command
+
+    server = os.environ.get('T2TOOLS_SERVER')
+    return 'ssh -x ' + server
+    
+def sshCmd(action):
+    # provide basic command to be executed remotely
+
+    cmd = 'hdfs dfs ' + config.get('commands',action)
+    return cmd
+
+def executeAction(action,src,opt='',tgt=''):
+    # execute the defined action and return rc  - return code
+    #                                       out - standard output
+    #                                       err - standard error
+    
+    list = sshBase().split(' ')
+    list.append(sshCmd(action))
+    if opt != '':
+        list.append(opt)
+    list.append(src)
+    if tgt != '':
+        list.append(tgt)
+
+    # show what we do
+    if debug>1:
+        print ' CMD String: ' + " ".join(list)
+        print ' CMD List: '
+        print list
+    
+    p = subprocess.Popen(list,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    (out, err) = p.communicate()
+    rc = p.returncode
+
+    return (rc,out,err)
+    
 def t2IsDir(config,src,debug=0):
-    # Test whether path is directory (0 - not directory, 1 - is directory, -1 - inquery failed)
+    # Test whether path is directory (-1: inquery failed, 0: not directory, 1: is directory)
+
+    print '\n NOT YET IMPLEMENTED \n'
 
     return 0
 
 def t2Ls(config,src,debug=0):
-    # List the given source
+    # List the given path (src)
 
     print "# o List o  " + src
-     
-    #print '%s:%d %s'%(entryType,entrySize,entryPath)
 
+    # execute the requested action
+    (rc,out,err) = executeAction('ls',src)
+
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('ls',len(lines),err)
+        sys.exit(rc)
+
+    # analyze the output
+    lines = out.split('\n')
+    for line in lines:
+        print ' LINE: ' + line
+        f = line.split(' ')
+        if len(f) == 8:
+            type = 'F'
+            if (f[0])[0] == 'd':
+                type = 'D'
+            size = int(f[4])
+            path = f[7]
+            print '%s:%d %s'%(type,size,path)
+            
     return
 
 
@@ -54,6 +130,8 @@ def t2Du(config,src,debug=0):
 
     # loop through the content and show each entry we find
     totalBytes = 0
+
+    print '\n NOT YET IMPLEMENTED \n'
 
 #    if isDir == 1:
 #        for entry in data["contents"]:
@@ -85,6 +163,8 @@ def t2Du1(config,src,debug=0):
     if debug>-1:
         print "# o DiskUsage -1 o  " + src
     
+    print '\n NOT YET IMPLEMENTED \n'
+
     # loop through the content and show each entry we find
     totalBytes = 0
 
@@ -99,6 +179,8 @@ def t2Du2(config,src,debug=0):
     # List disk usage for the given entry but only at most 2 level deep (for directories)
 
     print "# o DiskUsage -2 o  " + src
+
+    print '\n NOT YET IMPLEMENTED \n'
 
     spaceSubdirs = { src : 0 }
     
@@ -115,9 +197,22 @@ def t2Cp(config,src,tgt,debug=0):
 
     print "# o Copy o  " + src + "  -->  " + tgt
 
-    # check if target is an existing directory and adjust accordingly
-    isSrcDir = t2IsDir(config,src,debug)
-    isTgtDir = t2IsDir(config,tgt,debug)
+    # execute the requested action
+    (rc,out,err) = executeAction('cp',src,'',tgt)
+
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('cp',len(lines),err)
+        sys.exit(rc)
     
     return
 
@@ -126,16 +221,31 @@ def t2Mv(config,src,tgt,debug=0):
 
     print "# o Move o  " + src + "  -->  " + tgt
 
-    # check if target is an existing directory and adjust accordingly
-    isSrcDir = t2IsDir(config,src,debug)
-    isTgtDir = t2IsDir(config,tgt,debug)
+    # execute the requested action
+    (rc,out,err) = executeAction('mv',src,'',tgt)
 
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('mv',len(lines),err)
+        sys.exit(rc)
+    
     return
     
 def t2Up(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
 
     print "# o Upload o  " + src + "  -->  " + tgt
+    print '\n NOT YET IMPLEMENTED \n'
+
     tStart = time.time()
 
     # size determines whether in one shot or by chunks
@@ -153,7 +263,8 @@ def t2Down(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
 
     print "# o Download o  " + src + "  -->  " + tgt
-
+    print '\n NOT YET IMPLEMENTED \n'
+    
     return
 
 def t2Rm(config,src,debug=0):
@@ -161,40 +272,47 @@ def t2Rm(config,src,debug=0):
 
     print "# o RemoveFile o  " + src
 
-    isDir = t2IsDir(config,src,debug)
+    # execute the requested action
+    (rc,out,err) = executeAction('rm',src)
 
-    if   isDir == 0:
-        pass
-    elif isDir == 1:
-        print ' ERROR - path is a directory, cannot delete.'
-    else:
-        print ' ERROR - path inquery failed.'
- 
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('rm',len(lines),err)
+        sys.exit(rc)
+
     return
 
 def t2RmDir(config,src,debug=0):
-    # Remove the given path if it is a directory (show contents and ask for confirmation)
+    # Remove the given path if it is a directory (maybe ? show contents and ask for confirmation)
 
     print "# o RemoveDir o  " + src
 
-    isDir = t2IsDir(config,src,debug)
+    # execute the requested action
+    (rc,out,err) = executeAction('rmdir',src)
 
-    if   isDir == 1:
-        # show what is in there and ask
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
         print ''
-        t2Ls(config,src,debug)
-        print '\n Do you really want to delete this directory?'
-        response = raw_input(" Please confirm [N/y]: ") 
-        if response == 'y':
-            # get the core elements for curl
-            print "\n rmdir. \n"
-        else:
-            print "\n STOP. EXIT here. \n"
-    elif isDir == 0:
-        print ' ERROR - path is a file, cannot delete.'
-    else:
-        print ' ERROR - path inquery failed.'
- 
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('rmdir',len(lines),err)
+        sys.exit(rc)
+
     return
 
 def t2MkDir(config,src,debug=0):
@@ -202,30 +320,37 @@ def t2MkDir(config,src,debug=0):
 
     print "# o MakeDir o  " + src
 
-    isDir = t2IsDir(config,src,debug)
+    # execute the requested action
+    (rc,out,err) = executeAction('mkdir',src)
 
-    if   isDir == 1:
-        print ' INFO - path is a directory and exists already.'
-    elif isDir == 0:
-        print ' ERROR - path is a file, cannot make a same name directory.'
-    else:
-        print ' make the directory.'
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('mkdir',len(lines),err)
+        sys.exit(rc)
 
     return
 
 #===================================================================================================
 #  M A I N
 #===================================================================================================
-# Define string to explain usage of the script
+# define string to explain usage of the script
 usage =  " Usage: t2tools.py  --action=<what do you want to do?>\n"
 usage += "                    --source=<the source the action should apply to>\n"
 usage += "                  [ --target=<the target where data should go> ]\n"
-usage += "                  [ --debug=0 ]             <-- see various levels of debug output\n"
-usage += "                  [ --exec ]                <-- add this to execute all actions\n"
+usage += "                  [ --debug=0 ]  <-- see various levels of debug output\n"
 usage += "                  [ --help ]\n"
 
-# Define the valid options which can be specified and check out the command line
-valid = ['configFile=','action=','source=','target=','debug=','exec','help']
+# define valid options which can be specified and check out the command line
+valid = ['configFile=','action=','source=','target=','debug=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -233,10 +358,9 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-# --------------------------------------------------------------------------------------------------
-# Get all parameters for the production
-# --------------------------------------------------------------------------------------------------
-# Set defaults for each command line parameter/option
+# get all configuration parameters
+# --------------------------------
+# set defaults for each command line parameter/option
 configFile = os.environ.get('T2TOOLS_BASE','NOT-DEFINED') + '/config/' + 't2tools.cfg'
 
 action = 'ls'
@@ -244,7 +368,7 @@ src = ''
 tgt = ''
 debug = 0
 
-# Read new values from the command line
+# read new values from the command line
 for opt, arg in opts:
     if   opt == "--help":
         print usage
@@ -264,7 +388,7 @@ for opt, arg in opts:
 #---------------------------
 testLocalSetup(action,src,tgt,debug)
 
-# Read the configuration file
+# read the configuration file
 #----------------------------
 config = ConfigParser.RawConfigParser()
 config.read(configFile)
@@ -294,4 +418,9 @@ elif action == 'up':
 elif action == 'down':
     t2Down(config,src,tgt,debug)
 else:
-    print "\nAction is undefined: " + action + "\n"
+    print "\n ERROR - Action is undefined: " + action + "\n"
+    sys.exit(1)
+
+# if we arrive here, the action was a success :-)
+#------------------------------------------------
+sys.exit(0)

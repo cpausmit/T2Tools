@@ -27,10 +27,8 @@ def convertToUrl(dir,debug):
     return storageUrl
 
 def convertToHdfs(dir,debug):
-
-    if re.search('/mnt/hadoop/cms/store',dir):
+    if re.search('/mnt/hadoop/cms',dir):
         dir = dir.replace('/mnt/hadoop','')        
-
     if debug:
         print " DEBUG (srm.py): " + dir
 
