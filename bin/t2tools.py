@@ -48,7 +48,7 @@ def sshBase():
     # provide basic ssh command
 
     server = os.environ.get('T2TOOLS_SERVER')
-    return 'ssh -x ' + server
+    return 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + server
     
 def sshCmd(action):
     # provide basic command to be executed remotely

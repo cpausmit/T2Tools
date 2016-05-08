@@ -10,10 +10,10 @@ MOUNT = "/mnt/hadoop"
 TRUNC = "/cms"
 DIR = "/store/user/paus"
 
-def missingFilesInSample(sample):
+def missingFilesInSample(book,sample,tmpDir):
 
-    if os.path.exists('/tmp/missing_'+sample+'.list'):
-        print ' Missing file list already exists. /tmp/missing_'+sample+'.list'
+    if os.path.exists(tmpDir +'/missing_'+sample+'.list'):
+        print ' Missing file list already exists. ' + tmpDir + '/missing_'+sample+'.list'
         return
 
     os.system("date")
@@ -29,7 +29,8 @@ def missingFilesInSample(sample):
     
     doneFiles = []
     print ' Find done files (Dropbox).'
-    cmd = "python "+ os.getenv("PYCOX_BASE", None)+ "/pycox.py --action=ls --source=" + TRUNC + DIR + '/'+ book + '/' + sample + "| grep root"
+    cmd = "python "+ os.getenv("PYCOX_BASE", None) + "/pycox.py --action=ls --source=" \
+        + TRUNC + DIR + '/'+ book + '/' + sample + "| grep root"
     for line in os.popen(cmd).readlines():
         file = line[:-1]
         file = (file.split(" ")).pop()
@@ -46,7 +47,7 @@ def missingFilesInSample(sample):
     print ' Numbers all/done/missing:  %4d / %4d / %4d'%\
         (len(allFiles),len(doneFiles),len(missingFiles))
 
-    with open('/tmp/missing_'+sample+'.list','w') as fileH:
+    with open(tmpDir + '/missing_'+sample+'.list','w') as fileH:
         for file in missingFiles:
             fileH.write(TRUNC + DIR + "/" + book + '/' + sample + '/' + file + '\n')
 
@@ -80,6 +81,13 @@ for line in os.popen(cmd).readlines():
 # say what we found
 print ' Number of samples found: %d'%(len(allSamples))
 
+# make a cache for the missing files
+tmpDir = '/tmp/' + book.replace('/','_')
+if not os.path.exists(tmpDir):
+    cmd = 'mkdir -p ' + tmpDir
+    print '\n Making cache for missing file summary (%s).\n'%(tmpDir)
+    os.system('mkdir -p ' + tmpDir)
+    
 # now loop through all samples and find the missing files
 for sample in allSamples:
-    missingFilesInSample(sample)
+    missingFilesInSample(book,sample,tmpDir)

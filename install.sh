@@ -7,12 +7,14 @@ read TICKET_HOLDER
 if [ -z "$TICKET_HOLDER" ]
 then
   TICKET_HOLDER=$USER
+  echo " Set TICKET_HOLDER=$TICKET_HOLDER"
 fi
 echo -n ' Name of the Tier-2 account used: '
 read TIER2_USER
 if [ -z "$TIER2_USER" ]
 then
   TIER2_USER=$USER
+  echo " Set TIER2_USER=$TIER2_USER"
 fi
 
 # generate the setup file

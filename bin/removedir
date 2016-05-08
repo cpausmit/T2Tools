@@ -130,10 +130,3 @@ for arg in sys.argv[1:]:
 source = clean(newArgv[0])
 
 remove(source)
-
-# Test whether the source exists
-#if   exists(source):
-#    debugPrint("\n Removing: " + source)
-#    remove(source)
-#elif not exists(source):
-#    print ' ERROR: the source (' + source + ') does not exist.'
