@@ -23,6 +23,7 @@ touch setup.sh
 
 # first the base directory and the path
 echo "# CAREFUL THIS FILE IS GENERATED AT INSTALL"                 >> setup.sh
+echo "export T2TOOLS_DEBUG=0"                                      >> setup.sh
 echo "export T2TOOLS_SERVER=t2bat0380.cmsaf.mit.edu"               >> setup.sh
 echo "export T2TOOLS_TICKET=$TICKET_HOLDER"                        >> setup.sh
 echo "export T2TOOLS_USER=$TIER2_USER"                             >> setup.sh
