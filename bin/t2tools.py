@@ -56,6 +56,24 @@ def sshCmd(action):
     cmd = 'hdfs dfs ' + config.get('commands',action)
     return cmd
 
+def getInternalRC(output):
+    # find the return code from the command executed at thje remote site
+
+    irc = -99 # default means it failed
+    lines = output.split('\n')    
+
+    # very carefully extracting the internal retrun code
+    if len(lines) > 1:
+        lastLine = lines[-2]
+        f = lastLine.split(':')
+        if len(f) > 1:
+            if f[0] == 'IRC':
+                lines = lines[:-2] # overwite output removing the IRC line
+                output = "\n".join(lines)
+                irc = int(f[1])
+
+    return (irc,output)
+
 def executeAction(action,src,opt='',tgt=''):
     # execute the defined action and return rc  - return code
     #                                       out - standard output
@@ -68,6 +86,7 @@ def executeAction(action,src,opt='',tgt=''):
     list.append(src)
     if tgt != '':
         list.append(tgt)
+    list.append('; echo IRC:$?') # this will make sure that we know the internal return code
 
     # show what we do
     if debug>1:
@@ -78,15 +97,48 @@ def executeAction(action,src,opt='',tgt=''):
     p = subprocess.Popen(list,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     (out, err) = p.communicate()
     rc = p.returncode
-
-    return (rc,out,err)
+    (irc, out) = getInternalRC(out) # get the internal retrun code and clean the output
+            
+    return (irc,rc,out,err)
     
+def t2Exists(config,src,debug=0):
+    # Test whether path is file (0: not a file, 1: is a file)
+    # CAREFUL this is a little twisted as I invert the logic, but t2IsFile should be one if 'yes'
+
+    # execute the requested action
+    (irc,rc,out,err) = executeAction('test',src)
+    #print " RC, IRC: %d %d"%(rc,irc)
+
+    lines = out.split('\n')
+    if irc == 0:
+        return 1
+    else:
+        if debug>0:
+            lines = err.split('\n')
+            if len(lines) > 0 and err != '':
+                print 'ERROR -- %s: %d\n%s'%('test',len(lines),err)
+            lines = out.split('\n')
+            print 'OUTPUT -- %s: %d\n%s'%('test',len(lines),out)
+        return 0
+
 def t2IsDir(config,src,debug=0):
-    # Test whether path is directory (-1: inquery failed, 0: not directory, 1: is directory)
+    # Test whether path is directory (0: not a directory, 1: is directory)
+    # CAREFUL this is a little twisted as I invert the logic, but t2IsDir should be one if 'yes'
 
-    print '\n NOT YET IMPLEMENTED \n'
+    # execute the requested action
+    (irc,rc,out,err) = executeAction('testDir',src)
 
-    return 0
+    lines = out.split('\n')
+    if irc == 0:
+        return 1
+    else:
+        if debug>0:
+            lines = err.split('\n')
+            if len(lines) > 0 and err != '':
+                print 'ERROR -- %s: %d\n%s'%('testDir',len(lines),err)
+            lines = out.split('\n')
+            print 'OUTPUT -- %s: %d\n%s'%('testDir',len(lines),out)
+        return 0
 
 def t2Ls(config,src,debug=0):
     # List the given path (src)
@@ -94,7 +146,7 @@ def t2Ls(config,src,debug=0):
     print "# o List o  " + src
 
     # execute the requested action
-    (rc,out,err) = executeAction('ls',src)
+    (irc,rc,out,err) = executeAction('ls',src)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -129,76 +181,40 @@ def t2Ls(config,src,debug=0):
 def t2Du(config,src,debug=0):
 
     # loop through the content and show each entry we find
-    totalBytes = 0
 
-    print '\n NOT YET IMPLEMENTED \n'
+    # execute the requested action
+    (irc,rc,out,err) = executeAction('du',src)
 
-#    if isDir == 1:
-#        for entry in data["contents"]:
-#            isEntryDir = t2IsDir(config,src,debug)
-#            if isEntryDir == 1:
-#                # this is a directory
-#                subsrc = entry["path"]
-#                if subsrc == src:
-#                    continue
-#                totalBytes += t2Du(config,subsrc,debug)
-#            elif isEntryDir == 0:
-#                # this is a simple file
-#                file = entry["path"]
-#                sizeBytes = entry["bytes"]
-#                totalBytes += sizeBytes
-#                #print  "%10d  "%(sizeBytes) + file
-#        print  "%10d -"%(totalBytes) + src
-#    elif isDir == 0:
-#        totalBytes = data["bytes"]
-#    else:
-#        print ' ERROR - Requested object does not exist.'
-#
+    if debug > 0:
+        print ' Return code: %d'%(rc)
+        print ' Std Output : \n%s'%(out)
+        print ' Std Error  : \n%s'%(err)
+        print ''
+        
+    # deal with error
+    if rc != 0:
+        print ' RC: %d\n'%(rc)
+        lines = err.split('\n')
+        if len(lines) > 0 and err != '':
+            print 'ERROR -- %s: %d\n%s'%('ls',len(lines),err)
+        sys.exit(rc)
+
+    # analyze the output
+    lines = out.split('\n')
+    for line in lines:
+        print line
+
     # return the measured size
+    totalBytes = 0
     return totalBytes
 
-def t2Du1(config,src,debug=0):
-    # List disk usage for the given entry but only at most 1 level deep (for directories)
-
-    if debug>-1:
-        print "# o DiskUsage -1 o  " + src
-    
-    print '\n NOT YET IMPLEMENTED \n'
-
-    # loop through the content and show each entry we find
-    totalBytes = 0
-
-
-    # summarize our findings
-    if debug>-1:
-        print ' %s %.3f'%('Total [GB]:',totalBytes/1000./1000./1000.)
-
-    return totalBytes
-
-def t2Du2(config,src,debug=0):
-    # List disk usage for the given entry but only at most 2 level deep (for directories)
-
-    print "# o DiskUsage -2 o  " + src
-
-    print '\n NOT YET IMPLEMENTED \n'
-
-    spaceSubdirs = { src : 0 }
-    
-    # loop through the content
-    totalBytes = 0
-
-    # summarize our findings
-    print ' %.3f == %s'%(totalBytes/1000./1000./1000.,'Total [GB]')
-
-    return
-    
 def t2Cp(config,src,tgt,debug=0):
     # copy a given remote source file (src) to remote target file (tgt)
 
     print "# o Copy o  " + src + "  -->  " + tgt
 
     # execute the requested action
-    (rc,out,err) = executeAction('cp',src,'',tgt)
+    (irc,rc,out,err) = executeAction('cp',src,'',tgt)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -222,7 +238,7 @@ def t2Mv(config,src,tgt,debug=0):
     print "# o Move o  " + src + "  -->  " + tgt
 
     # execute the requested action
-    (rc,out,err) = executeAction('mv',src,'',tgt)
+    (irc,rc,out,err) = executeAction('mv',src,'',tgt)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -273,7 +289,7 @@ def t2Rm(config,src,debug=0):
     print "# o RemoveFile o  " + src
 
     # execute the requested action
-    (rc,out,err) = executeAction('rm',src)
+    (irc,rc,out,err) = executeAction('rm',src)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -297,7 +313,7 @@ def t2RmDir(config,src,debug=0):
     print "# o RemoveDir o  " + src
 
     # execute the requested action
-    (rc,out,err) = executeAction('rmdir',src)
+    (irc,rc,out,err) = executeAction('rmdir',src)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -321,7 +337,7 @@ def t2MkDir(config,src,debug=0):
     print "# o MakeDir o  " + src
 
     # execute the requested action
-    (rc,out,err) = executeAction('mkdir',src)
+    (irc,rc,out,err) = executeAction('mkdir',src)
 
     if debug > 0:
         print ' Return code: %d'%(rc)
@@ -405,10 +421,6 @@ elif action == 'mkdir':
     t2MkDir(config,src,debug)
 elif action == 'du':
     t2Du(config,src,debug)
-elif action == 'du1':
-    t2Du1(config,src,debug)
-elif action == 'du2':
-    t2Du2(config,src,debug)
 elif action == 'cp':
     t2Cp(config,src,tgt,debug)
 elif action == 'mv':
@@ -417,6 +429,14 @@ elif action == 'up':
     t2Up(config,src,tgt,debug)
 elif action == 'down':
     t2Down(config,src,tgt,debug)
+elif action == 'testDir':
+    rc = t2IsDir(config,src,debug)
+    if int(rc) == 0: # make sure if it is not a directory to return non-zero code
+        sys.exit(1)
+elif action == 'test':
+    rc = t2Exists(config,src,debug)
+    if int(rc) == 0: # make sure if it is not a file to return non-zero code
+        sys.exit(1)
 else:
     print "\n ERROR - Action is undefined: " + action + "\n"
     sys.exit(1)
