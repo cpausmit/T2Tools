@@ -7,7 +7,6 @@
 #---------------------------------------------------------------------------------------------------
 import os,sys,subprocess,getopt,re,ConfigParser,time
 from subprocess import PIPE
-from io import BytesIO
 
 #===================================================================================================
 #  H E L P E R S
@@ -143,7 +142,8 @@ def t2IsDir(config,src,debug=0):
 def t2Ls(config,src,debug=0):
     # List the given path (src)
 
-    print "# o List o  " + src
+    if debug>0:
+        print "# o List o  " + src
 
     # execute the requested action
     (irc,rc,out,err) = executeAction('ls',src)
@@ -165,18 +165,22 @@ def t2Ls(config,src,debug=0):
     # analyze the output
     lines = out.split('\n')
     for line in lines:
-        print ' LINE: ' + line
+        line = re.sub(' +',' ',line)
         f = line.split(' ')
+        if debug>1:
+            print ' LINE(%d): %s'%(len(f),line)
+
         if len(f) == 8:
             type = 'F'
             if (f[0])[0] == 'd':
                 type = 'D'
             size = int(f[4])
             path = f[7]
+            baseFile = (path.split('/')).pop()
+            #print '%d %s'%(size,baseFile)
             print '%s:%d %s'%(type,size,path)
             
-    return
-
+    return irc
 
 def t2Du(config,src,debug=0):
 
@@ -204,9 +208,7 @@ def t2Du(config,src,debug=0):
     for line in lines:
         print line
 
-    # return the measured size
-    totalBytes = 0
-    return totalBytes
+    return irc
 
 def t2Cp(config,src,tgt,debug=0):
     # copy a given remote source file (src) to remote target file (tgt)
@@ -230,7 +232,7 @@ def t2Cp(config,src,tgt,debug=0):
             print 'ERROR -- %s: %d\n%s'%('cp',len(lines),err)
         sys.exit(rc)
     
-    return
+    return irc
 
 def t2Mv(config,src,tgt,debug=0):
     # move a given remote source file (src) to remote target file (tgt)
@@ -254,7 +256,7 @@ def t2Mv(config,src,tgt,debug=0):
             print 'ERROR -- %s: %d\n%s'%('mv',len(lines),err)
         sys.exit(rc)
     
-    return
+    return irc
     
 def t2Up(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
@@ -273,15 +275,16 @@ def t2Up(config,src,tgt,debug=0):
     print " transfered: %.0f MB in %.2f sec at %.2f MB/sec"%\
         (size/1000./1000.,tEnd-tStart,size/1000./1000./(tEnd-tStart))
 
-    return
+    return irc
 
 def t2Down(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
 
     print "# o Download o  " + src + "  -->  " + tgt
     print '\n NOT YET IMPLEMENTED \n'
+    irc = 0
     
-    return
+    return irc
 
 def t2Rm(config,src,debug=0):
     # Remove the given path if it is a file
@@ -305,7 +308,7 @@ def t2Rm(config,src,debug=0):
             print 'ERROR -- %s: %d\n%s'%('rm',len(lines),err)
         sys.exit(rc)
 
-    return
+    return irc
 
 def t2RmDir(config,src,debug=0):
     # Remove the given path if it is a directory (maybe ? show contents and ask for confirmation)
@@ -329,7 +332,7 @@ def t2RmDir(config,src,debug=0):
             print 'ERROR -- %s: %d\n%s'%('rmdir',len(lines),err)
         sys.exit(rc)
 
-    return
+    return irc
 
 def t2MkDir(config,src,debug=0):
     # Make given path as a directory
@@ -400,6 +403,12 @@ for opt, arg in opts:
     elif opt == "--debug":
         debug = int(arg)
 
+# remove the '/mnt/hadoop' mount point
+if src.startswith('/mnt/hadoop/'):
+    src = '/' + '/'.join(src.split('/')[3:])
+if tgt.startswith('/mnt/hadoop/'):
+    tgt = '/' + '/'.join(tgt.split('/')[3:])
+
 # inspecting the local setup
 #---------------------------
 testLocalSetup(action,src,tgt,debug)
@@ -412,23 +421,23 @@ config.read(configFile)
 # looks like we have a valid request
 #-----------------------------------
 if   action == 'ls':
-    t2Ls(config,src,debug)
+    rc = t2Ls(config,src,debug)
 elif action == 'rm':
-    t2Rm(config,src,debug)
+    rc = t2Rm(config,src,debug)
 elif action == 'rmdir':
-    t2RmDir(config,src,debug)
+    rc = t2RmDir(config,src,debug)
 elif action == 'mkdir':
-    t2MkDir(config,src,debug)
+    rc = t2MkDir(config,src,debug)
 elif action == 'du':
-    t2Du(config,src,debug)
+    rc = t2Du(config,src,debug)
 elif action == 'cp':
-    t2Cp(config,src,tgt,debug)
+    rc = t2Cp(config,src,tgt,debug)
 elif action == 'mv':
-    t2Mv(config,src,tgt,debug)
+    rc = t2Mv(config,src,tgt,debug)
 elif action == 'up':
-    t2Up(config,src,tgt,debug)
+    rc = t2Up(config,src,tgt,debug)
 elif action == 'down':
-    t2Down(config,src,tgt,debug)
+    rc = t2Down(config,src,tgt,debug)
 elif action == 'testDir':
     rc = t2IsDir(config,src,debug)
     if int(rc) == 0: # make sure if it is not a directory to return non-zero code
@@ -443,4 +452,4 @@ else:
 
 # if we arrive here, the action was a success :-)
 #------------------------------------------------
-sys.exit(0)
+sys.exit(rc)
