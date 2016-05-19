@@ -97,6 +97,11 @@ def executeAction(action,src,opt='',tgt=''):
     (out, err) = p.communicate()
     rc = p.returncode
     (irc, out) = getInternalRC(out) # get the internal retrun code and clean the output
+
+    if irc != 0:
+        print " ERROR on remote end: %d"%(int(irc))
+        print " "
+        print " " + err
             
     return (irc,rc,out,err)
     
