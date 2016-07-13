@@ -49,11 +49,11 @@ def clean(path):
 
     return path
 
-def makedir(path):
+def makedir(path,option):
 
     if path.startswith('/cms/store'):
         debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
-        cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -mkdir ' + path
+        cmd = 'ssh -x ' + t2user + '@' + server + ' hdfs dfs -mkdir ' + option + ' ' + path
 
     # ready to perform the requested operation
     debugPrint('  -> making dir with: ' + cmd,debug)
@@ -68,12 +68,10 @@ def makedir(path):
 # Main starts here
 #===================================================================================================
 # Define string to explain usage of the script
-usage =  "\n Usage: removedir  <source>"
-usage += "                  --debug\n"
-usage += "                  --help\n\n"
+usage =  "\n Usage: makedir  <source>  [ --p --debug --help ]\n\n"
 
 # Define the valid options which can be specified and check out the command line
-valid = ['exe','debug','help']
+valid = ['exe','debug','p','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -87,6 +85,7 @@ except getopt.GetoptError, ex:
 # Set defaults for each option
 debug = False
 exe   = 0
+option = ""
 
 # Read new values from the command line
 for opt, arg in opts:
@@ -95,15 +94,19 @@ for opt, arg in opts:
         sys.exit(0)
     elif opt == '--debug':
         debug = True
+    elif opt == '--p':
+        option = '-p'
 
 newArgv = []
 for arg in sys.argv[1:]:
     #print ' ARG: ' + arg
     if arg[:2] == "--":
         continue
+    elif arg[:2] == "-p":
+        continue
     else:
         newArgv.append(arg)
 
 # Define source and target
 source = clean(newArgv[0])
-makedir(source)
+makedir(source,option)

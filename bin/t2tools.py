@@ -286,10 +286,32 @@ def t2Down(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
 
     print "# o Download o  " + src + "  -->  " + tgt
-    print '\n NOT YET IMPLEMENTED \n'
-    irc = 0
+
+    # is it a directory or file
+    if os.path.isdir(tgt):
+        dtarget = tgt
+        ftarget = src.split("/").pop()
+    else:
+        dtarget =  "/".join(tgt.split("/").pop())
+        ftarget = src.split("/").pop() 
+        
     
-    return irc
+    xrdSrc = "/" + "/".join((src.split("/"))[2:])
+    cmd = "xrdcp root://xrootd.cmsaf.mit.edu/" + xrdSrc + " " + dtarget + "/" + ftarget + ".partial"
+    list = cmd.split(' ')
+    p = subprocess.Popen(list,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    (out, err) = p.communicate()
+    rc = p.returncode
+
+    if rc != 0:
+        print " ERROR: %d"%(int(rc))
+        print " "
+        print " " + err
+
+    cmd = "mv " + dtarget + "/" + ftarget + ".partial " + dtarget + "/" + ftarget
+    os.system(cmd)
+
+    return rc
 
 def t2Rm(config,src,debug=0):
     # Remove the given path if it is a file

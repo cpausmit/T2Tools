@@ -69,7 +69,11 @@ def remove(path):
 
     if path.startswith('/cms/store'):
         debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
-        cmd = 'rglexec hdfs dfs -rm -r ' + path
+
+        ## cmd = 'rglexec hdfs dfs -rm -r ' + path
+
+        cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
+            + ' hdfs dfs -rm -r ' + path
     else:
         debugPrint(' Identified a normal directory',debug)
         cmd = 'rm -rf ' + path
