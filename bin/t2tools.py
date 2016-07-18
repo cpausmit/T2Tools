@@ -168,6 +168,8 @@ def t2Ls(config,src,debug=0):
         sys.exit(rc)
 
     # analyze the output
+    opt = config.get('options','value')
+
     lines = out.split('\n')
     for line in lines:
         line = re.sub(' +',' ',line)
@@ -183,7 +185,10 @@ def t2Ls(config,src,debug=0):
             path = f[7]
             baseFile = (path.split('/')).pop()
             #print '%d %s'%(size,baseFile)
-            print '%s:%d %s'%(type,size,path)
+            if opt == '-l':
+                print '%s'%(line)
+            else:
+                print '%s:%d %s'%(type,size,path)
             
     return irc
 
@@ -396,7 +401,7 @@ usage += "                  [ --debug=0 ]  <-- see various levels of debug outpu
 usage += "                  [ --help ]\n"
 
 # define valid options which can be specified and check out the command line
-valid = ['configFile=','action=','source=','target=','debug=','help']
+valid = ['configFile=','options=','action=','source=','target=','debug=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -410,6 +415,7 @@ except getopt.GetoptError, ex:
 configFile = os.environ.get('T2TOOLS_BASE','NOT-DEFINED') + '/config/' + 't2tools.cfg'
 
 action = 'ls'
+options = ''
 src = ''
 tgt = ''
 debug = 0
@@ -421,6 +427,8 @@ for opt, arg in opts:
         sys.exit(0)
     elif opt == "--action":
         action = arg
+    elif opt == "--options":
+        options = arg
     elif opt == "--configFile":
         configFile = arg
     elif opt == "--source":
@@ -444,6 +452,9 @@ testLocalSetup(action,src,tgt,debug)
 #----------------------------
 config = ConfigParser.RawConfigParser()
 config.read(configFile)
+
+config.add_section('options')
+config.set('options','value',options)
 
 # looks like we have a valid request
 #-----------------------------------
