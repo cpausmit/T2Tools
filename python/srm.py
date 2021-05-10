@@ -1,7 +1,9 @@
 #---------------------------------------------------------------------------------------------------
-# Python Module File to translate storage/computing elements into meta site names
+#
+# Python Module File to translate storage/computing elements into meta site names.
 #
 # Author: C.Paus                                                                      (Jun 16, 2010)
+#
 #---------------------------------------------------------------------------------------------------
 import os,sys,re,string
 

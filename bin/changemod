@@ -27,7 +27,7 @@ def clean(file):
 def changemod(options,dir,debug):
     # list a directory
 
-    cmd = 'ssh ' + t2user + '@' + server + ' hdfs dfs -chmod ' + options + ' ' + dir
+    cmd = 'ssh -x ' + t2user + '@' + server + ' hdfs dfs -chmod ' + options + ' ' + dir
     if debug != 0:
         print '  -> chmod with: ' + cmd
     status = os.system(cmd)

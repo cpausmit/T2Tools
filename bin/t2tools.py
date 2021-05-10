@@ -52,11 +52,14 @@ def sshBase():
 def sshCmd(action):
     # provide basic command to be executed remotely
 
-    cmd = 'hdfs dfs ' + config.get('commands',action)
+    # throwing in the option was needed for the Tier-3 setup....
+    #cmd  = ''
+    cmd  = 'export HADOOP_CLIENT_OPTS=\"-XX:-UseGCOverheadLimit -Xmx4096m\";'
+    cmd += 'hdfs dfs ' + config.get('commands',action)
     return cmd
 
 def getInternalRC(output):
-    # find the return code from the command executed at thje remote site
+    # find the return code from the command executed at the remote site
 
     irc = -99 # default means it failed
     lines = output.split('\n')    
@@ -272,23 +275,38 @@ def t2Up(config,src,tgt,debug=0):
     # upload a given local source file (src) to dropbox target file (tgt)
 
     print "# o Upload o  " + src + "  -->  " + tgt
-    print '\n NOT YET IMPLEMENTED \n'
+
+    src = "/mnt/hadoop" + src
 
     tStart = time.time()
 
     # size determines whether in one shot or by chunks
     statinfo = os.stat(src)
     size = statinfo.st_size
-  
+
+    cmd = "gfal-copy " + src + \
+        " gsiftp://se01.cmsaf.mit.edu:2811" + tgt + ".partial"
+    list = cmd.split(' ')
+    p = subprocess.Popen(list,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    (out, err) = p.communicate()
+    rc = p.returncode
+
+    if (rc == 0):
+        print "#   upload 'partial' completed. Move into final location."
+        rc = t2Mv(config,tgt+".partial",tgt,debug)
+
     tEnd = time.time()
 
-    print " transfered: %.0f MB in %.2f sec at %.2f MB/sec"%\
+    print " uploaded: %.0f MB in %.2f sec at %.2f MB/sec"%\
         (size/1000./1000.,tEnd-tStart,size/1000./1000./(tEnd-tStart))
 
-    return irc
+    return rc
 
 def t2Down(config,src,tgt,debug=0):
-    # upload a given local source file (src) to dropbox target file (tgt)
+    # download a given remote source file (src) to a target file (tgt)
+
+    # we strip the mount point off before, we we will have to add it here again (to be made nicer)
+    tgt = "/mnt/hadoop" + tgt
 
     print "# o Download o  " + src + "  -->  " + tgt
 
@@ -297,8 +315,8 @@ def t2Down(config,src,tgt,debug=0):
         dtarget = tgt
         ftarget = src.split("/").pop()
     else:
-        dtarget =  "/".join(tgt.split("/").pop())
-        ftarget = src.split("/").pop() 
+        dtarget = "/".join(tgt.split("/")[:-1])
+        ftarget = src.split("/").pop()
         
     
     xrdSrc = "/" + "/".join((src.split("/"))[2:])
