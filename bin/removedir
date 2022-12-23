@@ -1,136 +1,140 @@
-#!/usr/bin/env python
+#!/bin/bash
 #---------------------------------------------------------------------------------------------------
-# Script to remove a directory.
-#
-# Author: C.Paus                                                                      (May 06, 2010)
-#---------------------------------------------------------------------------------------------------
-import os,sys,getopt,re,srm
-t2user = os.environ['T2TOOLS_USER']
+t2tools.py --action=rmdir  --source=$1
 
-def exeCmd(cmd):
-
-    f = cmd.split(" ")
-    proc = subprocess.Popen(f,stderr=subprocess.STDOUT,stdout=subprocess.PIPE)
-
-    # trap potential return codes from rglexec
-    rc = -1
-    for line in proc.stdout:
-        if 'RC: ' in line:
-            rc = (line[:-1].split(" ")).pop()
-            rc = int(rc)
-
-    # just wait until it is done
-    proc.wait()
-    status = proc.returncode
-
-    # trap the internal return code
-    if f[0].startswith('rglexec'):
-        status = rc
-
-    return status
-        
-
-def debugPrint(text,debug=0):
-    if debug:
-        print ' DEBUG: ' + text
-
-def clean(file):
-
-    if  file.startswith('root:'):
-        g = file.split('/')
-        file = '/'.join(g[3:])
-        file = '/cms' + file
-    elif file.startswith('/mnt/hadoop/cms/store'):
-        file = '/' + '/'.join(dir.split('/')[3:])
-
-    debugPrint(' Cleaned: ' + file)
-
-    return file
-
-def exists(path):
-
-    if   path.startswith('/mnt/hadoop/cms/store'):
-        debugPrint(' Identified a tier-2 directory: ' + path)
-        cmd = 'rglexec ls -1 ' + path
-    elif path.startswith('/cms/store'):
-        debugPrint(' Identified a tier-2 directory: ' + path)
-        cmd = 'rglexec hdfs dfs -ls ' + path
-    else:
-        debugPrint(' Identified a normal directory: ' + path)
-        cmd = 'ls -1 ' + path + '>\& /dev/null'
-            
-    debugPrint(' Cmd:    %s' % cmd)
-    status = exeCmd(cmd)
-    debugPrint(' Status: %d' % int(status))
-
-    return (status == 0)
-
-def remove(path):
-
-    if path.startswith('/cms/store'):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
-
-        ## cmd = 'rglexec hdfs dfs -rm -r ' + path
-
-        cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
-            + ' hdfs dfs -rm -r ' + path
-    else:
-        debugPrint(' Identified a normal directory',debug)
-        cmd = 'rm -rf ' + path
-
-    # ready to perform the requested operation
-    debugPrint('  -> removing with: ' + cmd,debug)
-    status = 0
-    status = os.system(cmd)
-    if status != 0:
-        print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
-
-    return status
-
-#===================================================================================================
-# Main starts here
-#===================================================================================================
-# Define string to explain usage of the script
-usage =  "\n Usage: removedir  <source>"
-usage += "                  --exe\n"
-usage += "                  --debug\n"
-usage += "                  --help\n\n"
-
-# Define the valid options which can be specified and check out the command line
-valid = ['exe','debug','help']
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print usage
-    print str(ex)
-    sys.exit(1)
-
-# --------------------------------------------------------------------------------------------------
-# Get all parameters for the production
-# --------------------------------------------------------------------------------------------------
-# Set defaults for each option
-debug = False
-exe   = 0
-
-# Read new values from the command line
-for opt, arg in opts:
-    if   opt == '--help':
-        print usage
-        sys.exit(0)
-    elif opt == '--debug':
-        debug = True
-    elif opt == '--exe':
-        exe   = 1
-
-newArgv = []
-for arg in sys.argv[1:]:
-    #print ' ARG: ' + arg
-    if arg[:2] == "--":
-        continue
-    else:
-        newArgv.append(arg)
-
-# Define source and target
-source = clean(newArgv[0])
-
-remove(source)
+###!/usr/bin/env python
+###---------------------------------------------------------------------------------------------------
+### Script to remove a directory.
+###
+### Author: C.Paus                                                                      (May 06, 2010)
+###---------------------------------------------------------------------------------------------------
+##import os,sys,getopt,re,srm
+##t2user = os.environ['T2TOOLS_USER']
+##
+##def exeCmd(cmd):
+##
+##    f = cmd.split(" ")
+##    proc = subprocess.Popen(f,stderr=subprocess.STDOUT,stdout=subprocess.PIPE)
+##
+##    # trap potential return codes from rglexec
+##    rc = -1
+##    for line in proc.stdout:
+##        if 'RC: ' in line:
+##            rc = (line[:-1].split(" ")).pop()
+##            rc = int(rc)
+##
+##    # just wait until it is done
+##    proc.wait()
+##    status = proc.returncode
+##
+##    # trap the internal return code
+##    if f[0].startswith('rglexec'):
+##        status = rc
+##
+##    return status
+##        
+##
+##def debugPrint(text,debug=0):
+##    if debug:
+##        print(' DEBUG: ' + text)
+##
+##def clean(file):
+##
+##    if  file.startswith('root:'):
+##        g = file.split('/')
+##        file = '/'.join(g[3:])
+##        file = '/cms' + file
+##    elif file.startswith('/mnt/hadoop/cms/store'):
+##        file = '/' + '/'.join(dir.split('/')[3:])
+##
+##    debugPrint(' Cleaned: ' + file)
+##
+##    return file
+##
+##def exists(path):
+##
+##    if   path.startswith('/mnt/hadoop/cms/store'):
+##        debugPrint(' Identified a tier-2 directory: ' + path)
+##        cmd = 'rglexec ls -1 ' + path
+##    elif path.startswith('/cms/store'):
+##        debugPrint(' Identified a tier-2 directory: ' + path)
+##        cmd = 'rglexec hdfs dfs -ls ' + path
+##    else:
+##        debugPrint(' Identified a normal directory: ' + path)
+##        cmd = 'ls -1 ' + path + '>\& /dev/null'
+##            
+##    debugPrint(' Cmd:    %s' % cmd)
+##    status = exeCmd(cmd)
+##    debugPrint(' Status: %d' % int(status))
+##
+##    return (status == 0)
+##
+##def remove(path):
+##
+##    if path.startswith('/cms/store'):
+##        debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
+##
+##        ## cmd = 'rglexec hdfs dfs -rm -r ' + path
+##
+##        cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
+##            + ' hdfs dfs -rm -r ' + path
+##    else:
+##        debugPrint(' Identified a normal directory',debug)
+##        cmd = 'rm -rf ' + path
+##
+##    # ready to perform the requested operation
+##    debugPrint('  -> removing with: ' + cmd,debug)
+##    status = 0
+##    status = os.system(cmd)
+##    if status != 0:
+##        print(' ERROR: remove returned error %d (on %s)'%(status,cmd))
+##
+##    return status
+##
+###===================================================================================================
+### Main starts here
+###===================================================================================================
+### Define string to explain usage of the script
+##usage =  "\n Usage: removedir  <source>"
+##usage += "                  --exe\n"
+##usage += "                  --debug\n"
+##usage += "                  --help\n\n"
+##
+### Define the valid options which can be specified and check out the command line
+##valid = ['exe','debug','help']
+##try:
+##    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+##except getopt.GetoptError as ex:
+##    print(usage)
+##    print(str(ex))
+##    sys.exit(1)
+##
+### --------------------------------------------------------------------------------------------------
+### Get all parameters for the production
+### --------------------------------------------------------------------------------------------------
+### Set defaults for each option
+##debug = False
+##exe   = 0
+##
+### Read new values from the command line
+##for opt, arg in opts:
+##    if   opt == '--help':
+##        print(usage)
+##        sys.exit(0)
+##    elif opt == '--debug':
+##        debug = True
+##    elif opt == '--exe':
+##        exe   = 1
+##
+##newArgv = []
+##for arg in sys.argv[1:]:
+##    #print(' ARG: ' + arg)
+##    if arg[:2] == "--":
+##        continue
+##    else:
+##        newArgv.append(arg)
+##
+### Define source and target
+##source = clean(newArgv[0])
+##
+##remove(source)

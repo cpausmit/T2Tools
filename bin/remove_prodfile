@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+#---------------------------------------------------------------------------------------------------
+# Script to remove a file.
+#
+# Author: C.Paus                                                                      (May 06, 2010)
+#---------------------------------------------------------------------------------------------------
+import os,sys,getopt,re,srm
+t2user = os.environ['T2TOOLS_USER']
+
+def debugPrint(text,debug):
+    if debug:
+        print(' DEBUG: ' + text)
+
+def execute(cmd,debug):
+    if debug:
+        debugPrint(cmd,debug)
+    else:
+        os.system(cmd)
+
+def clean(file,debug):
+    if   file.startswith('root:'):
+        g = file.split('/')
+        file = '/'.join(g[3:])
+        file = '/cms' + file
+    elif file.startswith('/mnt/hadoop/cms'):
+        file = '/' + '/'.join(file.split('/')[3:])
+
+    debugPrint(' Cleaned: ' + file,debug)
+
+    return file
+
+def remove(source,debug):
+    cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
+            + ' hdfs dfs -rm ' + source
+    ##cmd = 'rglexec hdfs dfs -rm ' + source
+
+    # ready to perform the requested operation
+    debugPrint('  -> removing with: ' + cmd,debug)
+    status = 0
+    status = os.system(cmd)
+    if status != 0:
+        print(' ERROR: remove returned error %d (on %s)'%(status,cmd))
+
+    return status
+
+def removeCatalog(source,debug):
+    tmp = os.getpid()
+    pid = "%d"%tmp
+    # which catalog is this one in?
+    catalogDir = '/home/cmsprod/catalog/t2mit'
+    # now get the dataset and the book
+    f = source.split('/')
+    file = f[-1]
+    dataset = f[-2]
+    book = f[-4] + '/' + f[-3]
+    dir = catalogDir + '/' + book + '/' + dataset
+
+    # now remove the particular file from the record
+    cmd = 'cat ' + dir + '/RawFiles.?? | sort -u | grep -v ' + file + ' > /tmp/RawFiles.00.' + pid
+    execute(cmd,debug)
+    cmd = 'rm ' + dir + '/RawFiles.??'
+    execute(cmd,debug)
+    cmd = 'mv /tmp/RawFiles.00.' + pid + ' ' + dir + '/RawFiles.00'
+    execute(cmd,debug)
+    cmd = 'cat ' + dir + '/Files | grep -v ' + file + ' > /tmp/Files.' + pid
+    execute(cmd,debug)
+    cmd = 'mv /tmp/Files.' + pid + ' ' + dir + '/Files'
+    execute(cmd,debug)
+
+    return
+
+#===================================================================================================
+# Main starts here
+#===================================================================================================
+# Define string to explain usage of the script
+usage =  "Usage: remove  <source>"
+usage += "               --catalog\n"
+usage += "               --debug\n"
+usage += "               --help\n"
+
+# Define the valid options which can be specified and check out the command line
+valid = ['catalog','debug','help']
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError as ex:
+    print(usage)
+    print(str(ex))
+    sys.exit(1)
+
+# --------------------------------------------------------------------------------------------------
+# Get all parameters for the production
+# --------------------------------------------------------------------------------------------------
+# Set defaults for each option
+catalog = False
+debug   = False
+
+# Read new values from the command line
+for opt, arg in opts:
+    if   opt == '--help':
+        print(usage)
+        sys.exit(0)
+    elif opt == '--debug':
+        debug   = True
+    elif opt == '--catalog':
+        catalog = True
+
+newArgv = []
+for arg in sys.argv[1:]:
+    if arg[:2] == "--":
+        continue
+    else:
+        newArgv.append(arg)
+
+# go through the files
+for nextFile in newArgv:
+    source = clean(nextFile,debug)
+
+    if debug>0:
+        print(' Next File: ' + source)
+    # remove it
+    remove(source,debug)
+    # Remove also the catalog entry
+    if catalog:
+        removeCatalog(source,debug)
