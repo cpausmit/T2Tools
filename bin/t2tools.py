@@ -10,11 +10,13 @@
 #                                                                         v0 - Mar 31, 2016 - C.Paus
 #                                                                         v1 - Nov 16, 2026 - Ceph
 #---------------------------------------------------------------------------------------------------
-import os,sys,subprocess,getopt,re,time
+import os,sys,subprocess,getopt,re,time,signal
 import configparser
 
 # keep our messages in order with the error messages
 sys.stdout.reconfigure(line_buffering=True)
+# behave like a regular unix tool when output is cut short (ex. | head)
+signal.signal(signal.SIGPIPE,signal.SIG_DFL)
 
 #===================================================================================================
 #  H E L P E R S
