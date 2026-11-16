@@ -9,7 +9,7 @@ t2user = os.environ['T2TOOLS_USER']
 
 def debugPrint(text,debug):
     if debug:
-        print ' DEBUG: ' + text
+        print(' DEBUG: ' + text)
 
 def execute(cmd,debug):
     if debug:
@@ -30,14 +30,17 @@ def clean(file,debug):
     return file
 
 def remove(source,debug):
-    cmd = 'rglexec hdfs dfs -rm ' + source
+
+    cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
+            + ' hdfs dfs -rm ' + source
+    # cmd = 'rglexec hdfs dfs -rm ' + source
 
     # ready to perform the requested operation
     debugPrint('  -> removing with: ' + cmd,debug)
     status = 0
     status = os.system(cmd)
     if status != 0:
-        print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
+        print(' ERROR: remove returned error %d (on %s)'%(status,cmd))
 
     return status
 
@@ -80,9 +83,9 @@ usage += "               --help\n"
 valid = ['catalog','debug','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print usage
-    print str(ex)
+except getopt.GetoptError as ex:
+    print(usage)
+    print(str(ex))
     sys.exit(1)
 
 # --------------------------------------------------------------------------------------------------
@@ -95,7 +98,7 @@ debug   = False
 # Read new values from the command line
 for opt, arg in opts:
     if   opt == '--help':
-        print usage
+        print(usage)
         sys.exit(0)
     elif opt == '--debug':
         debug   = True
@@ -114,7 +117,7 @@ for nextFile in newArgv:
     source = clean(nextFile,debug)
 
     if debug>0:
-        print ' Next File: ' + source
+        print(' Next File: ' + source)
     # remove it
     remove(source,debug)
     # Remove also the catalog entry

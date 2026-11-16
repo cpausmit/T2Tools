@@ -32,7 +32,7 @@ def exeCmd(cmd):
 
 def debugPrint(text,debug=0):
     if debug:
-        print ' DEBUG: ' + text
+        print(' DEBUG: ' + text)
 
 def clean(file):
 
@@ -68,14 +68,11 @@ def exists(path):
 def remove(path):
 
     if path.startswith('/cms/store'):
-        debugPrint(' Identified a tier-2 hadoop directory: ' + path,debug)
-
-        ## cmd = 'rglexec hdfs dfs -rm -r ' + path
-
+        debugPrint(' Identified a tier-2 hadoop file (possibly directory): ' + path,debug)
         cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
             + ' hdfs dfs -rm -r ' + path
     else:
-        debugPrint(' Identified a normal directory',debug)
+        debugPrint(' Identified a normal file (possibly directory)',debug)
         cmd = 'rm -rf ' + path
 
     # ready to perform the requested operation
@@ -83,7 +80,7 @@ def remove(path):
     status = 0
     status = os.system(cmd)
     if status != 0:
-        print ' ERROR: remove returned error %d (on %s)'%(status,cmd)
+        print(' ERROR: remove returned error %d (on %s)'%(status,cmd))
 
     return status
 
@@ -100,9 +97,9 @@ usage += "                  --help\n\n"
 valid = ['exe','debug','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print usage
-    print str(ex)
+except getopt.GetoptError as ex:
+    print(usage)
+    print(str(ex))
     sys.exit(1)
 
 # --------------------------------------------------------------------------------------------------
@@ -115,7 +112,7 @@ exe   = 0
 # Read new values from the command line
 for opt, arg in opts:
     if   opt == '--help':
-        print usage
+        print(usage)
         sys.exit(0)
     elif opt == '--debug':
         debug = True
@@ -124,7 +121,7 @@ for opt, arg in opts:
 
 newArgv = []
 for arg in sys.argv[1:]:
-    #print ' ARG: ' + arg
+    #print(' ARG: ' + arg
     if arg[:2] == "--":
         continue
     else:
