@@ -1,3 +1,5 @@
 #!/bin/bash
 #---------------------------------------------------------------------------------------------------
-t2tools.py --action=up  --source $1 --target $2
+# Upload a local file to the Tier-2.  Usage: upload <local file> <tier-2 file>
+#---------------------------------------------------------------------------------------------------
+t2tools.py --action=up --source="$1" --target="$2"

@@ -1,52 +1,30 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #---------------------------------------------------------------------------------------------------
-# Script to remove a file.
+# Script to remove Tier-2 files, optionally also remove them from the catalog.
 #
 # Author: C.Paus                                                                      (May 06, 2010)
 #---------------------------------------------------------------------------------------------------
-import os,sys,getopt,re,srm
-t2user = os.environ['T2TOOLS_USER']
+import os,sys,getopt,subprocess
 
 def debugPrint(text,debug):
     if debug:
         print(' DEBUG: ' + text)
 
 def execute(cmd,debug):
-    if debug:
-        debugPrint(cmd,debug)
-    else:
-        os.system(cmd)
-
-def clean(file,debug):
-    if   file.startswith('root:'):
-        g = file.split('/')
-        file = '/'.join(g[3:])
-        file = '/cms' + file
-    elif file.startswith('/mnt/hadoop/cms'):
-        file = '/' + '/'.join(file.split('/')[3:])
-
-    debugPrint(' Cleaned: ' + file,debug)
-
-    return file
+    debugPrint(cmd,debug)
+    os.system(cmd)
 
 def remove(source,debug):
-
-    cmd = 'ssh -x ' + os.environ.get('T2TOOLS_USER') + '@' + os.environ.get('T2TOOLS_SERVER') \
-            + ' hdfs dfs -rm ' + source
-    # cmd = 'rglexec hdfs dfs -rm ' + source
-
-    # ready to perform the requested operation
-    debugPrint('  -> removing with: ' + cmd,debug)
-    status = 0
-    status = os.system(cmd)
+    cmd = ['t2tools.py','--action=rm','--source=' + source]
+    debugPrint('  -> removing with: ' + ' '.join(cmd),debug)
+    status = subprocess.call(cmd)
     if status != 0:
-        print(' ERROR: remove returned error %d (on %s)'%(status,cmd))
+        print(' ERROR: remove returned error %d (on %s)'%(status,' '.join(cmd)))
 
     return status
 
 def removeCatalog(source,debug):
-    tmp = os.getpid()
-    pid = "%d"%tmp
+    pid = "%d"%os.getpid()
     # which catalog is this one in?
     catalogDir = '/home/cmsprod/catalog/t2mit'
     # now get the dataset and the book
@@ -73,29 +51,21 @@ def removeCatalog(source,debug):
 #===================================================================================================
 # Main starts here
 #===================================================================================================
-# Define string to explain usage of the script
-usage =  "Usage: remove  <source>"
+usage =  "Usage: remove  <source> [ <source> ... ]\n"
 usage += "               --catalog\n"
 usage += "               --debug\n"
 usage += "               --help\n"
 
-# Define the valid options which can be specified and check out the command line
 valid = ['catalog','debug','help']
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError as ex:
     print(usage)
     print(str(ex))
     sys.exit(1)
 
-# --------------------------------------------------------------------------------------------------
-# Get all parameters for the production
-# --------------------------------------------------------------------------------------------------
-# Set defaults for each option
 catalog = False
 debug   = False
-
-# Read new values from the command line
 for opt, arg in opts:
     if   opt == '--help':
         print(usage)
@@ -105,21 +75,13 @@ for opt, arg in opts:
     elif opt == '--catalog':
         catalog = True
 
-newArgv = []
-for arg in sys.argv[1:]:
-    if arg[:2] == "--":
-        continue
-    else:
-        newArgv.append(arg)
-
-# go through the files
-for nextFile in newArgv:
-    source = clean(nextFile,debug)
-
-    if debug>0:
-        print(' Next File: ' + source)
-    # remove it
-    remove(source,debug)
-    # Remove also the catalog entry
-    if catalog:
+status = 0
+for source in args:
+    debugPrint(' Next File: ' + source,debug)
+    rc = remove(source,debug)
+    status += rc
+    # remove also the catalog entry
+    if catalog and rc == 0:
         removeCatalog(source,debug)
+
+sys.exit(1 if status != 0 else 0)

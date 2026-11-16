@@ -1,89 +1,22 @@
-#!/usr/bin/env python
+#!/bin/bash
 #---------------------------------------------------------------------------------------------------
-# Script to change permission on a directory. The format is the same as the chmod command.
-#
-# Author: C.Paus                                                                    (April 21, 2016)
+# Change permissions of Tier-2 paths, same format as chmod.
+# Usage: changemod --options="-R a+r" <path> [ <path> ... ]
 #---------------------------------------------------------------------------------------------------
-import os,sys,getopt,re
-
-server = os.environ['T2TOOLS_SERVER']
-t2user = os.environ['T2TOOLS_USER']
-
-def clean(file):
-    # make the file name standard
-
-    if   file.startswith('root:'):
-        g = file.split('/')
-        file = '/'.join(g[3:])
-        file = '/cms' + file
-    elif file.startswith('/mnt/hadoop/cms/store'):
-        file = '/' + '/'.join(dir.split('/')[3:])
-
-    if debug != 0:
-        print ' clean: ' + file
-
-    return file
-
-def changemod(options,dir,debug):
-    # list a directory
-
-    cmd = 'ssh -x ' + t2user + '@' + server + ' hdfs dfs -chmod ' + options + ' ' + dir
-    if debug != 0:
-        print '  -> chmod with: ' + cmd
-    status = os.system(cmd)
-    
-    return status
-
-#===================================================================================================
-# Main starts here
-#===================================================================================================
-# Define string to explain usage of the script
-usage =  "Usage: changemod --options="" (ex. \"-R a+r\")\n"
-usage += "                 --debug\n"
-usage += "                 --help\n"
-
-# Define the valid options which can be specified and check out the command line
-valid = ['options=','debug=','help']
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print usage
-    print str(ex)
-    sys.exit(1)
-
-# --------------------------------------------------------------------------------------------------
-# Get all parameters for the production
-# --------------------------------------------------------------------------------------------------
-# Set defaults for each option
-options = ''
-debug = 0
-long = 0
-# Read new values from the command line
-for opt, arg in opts:
-    if opt == '--help':
-        print usage
-        sys.exit(0)
-    if opt == '--options':
-        options = arg
-    if opt == '--debug':
-        debug = arg
-
-# Test whether the directory exists and then proceed
-status = 0
-for dir in sys.argv[1:]:
-
-    dir = clean(dir)
-
-    if dir[:2] == "--":
-        continue
-
-    if debug != 0:
-        print "\nProcessing: " + dir + "\n"
-
-    status += changemod(options,dir,debug)
-
-# make sure to give the right exit code
-if status != 0:
-    status = 1
-
-sys.exit(status)
+options=""
+paths=""
+for arg in "$@"
+do
+  case "$arg" in
+    --options=*) options="${arg#--options=}" ;;
+    --help)      echo " Usage: changemod --options=\"-R a+r\" <path> ..."; exit 0 ;;
+    --*)         ;;
+    *)           paths="$paths $arg" ;;
+  esac
+done
+rc=0
+for path in $paths
+do
+  t2tools.py --action=chmod --options="$options" --source="$path" || rc=1
+done
+exit $rc
