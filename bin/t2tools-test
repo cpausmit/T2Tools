@@ -1,0 +1,111 @@
+#!/bin/bash
+#---------------------------------------------------------------------------------------------------
+# Test the T2Tools against the real Tier-2 storage.
+#
+# Read-only tests run on an existing area (default: /cms/store/user/$T2TOOLS_USER). Write tests
+# create a scratch directory below it, exercise all write actions and the wrappers, and remove the
+# scratch directory at the end (also when interrupted).
+#
+# Usage: t2tools-test [ --read-only ] [ --base=/cms/store/user/<user> ]
+#                                                                         v0 - Nov 17, 2026 - C.Paus
+#---------------------------------------------------------------------------------------------------
+BASE=/cms/store/user/${T2TOOLS_USER:-paus}
+WRITE=1
+for arg in "$@"
+do
+  case "$arg" in
+    --read-only) WRITE=0 ;;
+    --base=*)    BASE="${arg#--base=}" ;;
+    --help)      echo " Usage: t2tools-test [ --read-only ] [ --base=/cms/store/user/<user> ]"; exit 0 ;;
+    *)           echo " Unknown option: $arg"; exit 1 ;;
+  esac
+done
+
+if [ -z "$T2TOOLS_BASE" ] || ! which t2tools.py >& /dev/null
+then
+  echo " ERROR -- t2tools not setup (source setup.sh)."
+  exit 1
+fi
+
+TEST=$BASE/t2tools-test.$(hostname -s).$$
+LOCAL=$(mktemp -d /tmp/t2tools-test.XXXXXX)
+nPass=0
+nFail=0
+
+cleanup() {
+  rm -rf "$LOCAL"
+  if [ $WRITE == 1 ] && t2tools.py --action=test --source=$TEST >& /dev/null
+  then
+    echo " cleanup: removing $TEST"
+    t2tools.py --action=rmr --source=$TEST > /dev/null
+  fi
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+
+step() {
+  # run one test step: step <name> <command ...>
+  local name="$1"; shift
+  local out rc
+  out=$("$@" 2>&1); rc=$?
+  if [ $rc == 0 ]
+  then
+    nPass=$((nPass+1)); printf "  PASS  %s\n" "$name"
+  else
+    nFail=$((nFail+1)); printf "  FAIL  %s (rc=%d)\n" "$name" $rc
+    echo "$out" | sed 's/^/          | /' | tail -5
+  fi
+  return $rc
+}
+
+echo ""
+echo " T2Tools test -- base: $BASE"
+echo "                config: $T2TOOLS_BASE/config/t2tools.cfg"
+echo ""
+echo " Read-only tests"
+step "test (base exists)"          t2tools.py --action=test --source=$BASE
+step "testDir (base is dir)"       t2tools.py --action=testDir --source=$BASE
+step "test (missing path fails)"   bash -c "! t2tools.py --action=test --source=$BASE/does-not-exist.$$"
+step "ls (base)"                   bash -c "t2tools.py --action=ls --source=$BASE | grep -qE '^[DF]:[0-9]+ $BASE/'"
+step "ls -l (8 fields)"            bash -c "t2tools.py --action=ls --options=-l --source=$BASE | awk 'NF<8{exit 1}'"
+step "ls (glob)"                   bash -c "t2tools.py --action=ls --source='$BASE/*' > /dev/null"
+step "ls (root:// input)"          bash -c "t2tools.py --action=ls --source=root://xrootd.cmsaf.mit.edu/${BASE#/cms} | grep -q '^[DF]:'"
+step "ls (missing path fails)"     bash -c "! t2tools.py --action=ls --source=$BASE/does-not-exist.$$"
+step "ls (pipe into head)"         bash -c "t2tools.py --action=ls --source=$BASE | head -1 | grep -q ."
+step "du (base)"                   bash -c "t2tools.py --action=du --source=$BASE | grep -q ."
+step "refuse path outside /cms"    bash -c "! t2tools.py --action=ls --source=/etc"
+step "refuse '..' in path"         bash -c "! t2tools.py --action=ls --source=$BASE/../../../etc"
+step "refuse shell characters"     bash -c "! t2tools.py --action=ls --source='$BASE;id'"
+step "refuse rmr high in tree"     bash -c "! t2tools.py --action=rmr --source=/cms/store/user"
+
+if [ $WRITE == 1 ]
+then
+  head -c 3000000 /dev/urandom > $LOCAL/up.root
+  md5=$(md5sum < $LOCAL/up.root | cut -d' ' -f1)
+
+  echo ""
+  echo " Write tests -- scratch: $TEST"
+  step "mkdir -p (makedir --p)"    makedir --p $TEST/a/b
+  step "testDir (new dir)"         t2tools.py --action=testDir --source=$TEST/a/b
+  step "up (upload)"               upload $LOCAL/up.root $TEST/a/up.root
+  step "ls (uploaded size)"        bash -c "list $TEST/a | grep -q '^F:3000000 $TEST/a/up.root$'"
+  step "no .partial left"          bash -c "list $TEST/a > /dev/null && ! list $TEST/a | grep -q partial"
+  step "cp"                        t2tools.py --action=cp --source=$TEST/a/up.root --target=$TEST/a/cp.root
+  step "mv (move)"                 move $TEST/a/cp.root $TEST/a/b/mv.root
+  step "chmod (changemod)"         changemod --options="-R g+w" $TEST/a
+  step "down + md5"                bash -c "t2tools.py --action=down --source=$TEST/a/b/mv.root --target=$LOCAL/down.root > /dev/null && [ \$(md5sum < $LOCAL/down.root | cut -d' ' -f1) == $md5 ]"
+  step "du (scratch)"              bash -c "t2tools.py --action=du --source=$TEST/a | grep -q '$TEST/a/up.root'"
+  step "du (empty dir is empty)"   bash -c "makedir $TEST/empty > /dev/null && [ -z \"\$(t2tools.py --action=du --source=$TEST/empty)\" ]"
+  step "rm file (remove)"          remove $TEST/a/up.root
+  step "rm on dir refused"         bash -c "t2tools.py --action=testDir --source=$TEST/a/b && ! t2tools.py --action=rm --source=$TEST/a/b"
+  step "rmdir non-empty refused"   bash -c "t2tools.py --action=test --source=$TEST/a/b/mv.root && ! t2tools.py --action=rmdir --source=$TEST/a/b"
+  step "rm last file"              remove $TEST/a/b/mv.root
+  step "rmdir empty"               t2tools.py --action=rmdir --source=$TEST/a/b
+  step "removedir (rmr)"           removedir $TEST
+  step "scratch is gone"           bash -c "! t2tools.py --action=test --source=$TEST"
+fi
+
+echo ""
+echo " Summary: $nPass passed, $nFail failed"
+echo ""
+[ $nFail == 0 ]

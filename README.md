@@ -42,3 +42,11 @@ xrdcp (`transfer = xrootd`).
 
 Convenience wrappers: `list`, `remove [--catalog]`, `removedir`, `makedir [--p]`, `move`,
 `changemod --options=...`, `upload`.
+
+## Testing
+
+    t2tools-test                  # read-only and write tests (scratch dir below the base, removed after)
+    t2tools-test --read-only      # read-only tests only
+    t2tools-test --base=/cms/store/user/<user>
+
+Write tests need write permission for the configured user in the base area.
